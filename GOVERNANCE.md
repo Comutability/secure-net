@@ -1,7 +1,11 @@
 # How Secure Net is governed
 
-**Status: draft proposal. Not yet ratified.** It takes effect when Comutability's human
-maintainers approve it; until then it describes how we intend to work.
+**Status: draft proposal. Not yet ratified.** It takes effect only when the authorised human
+decision-maker's approval is recorded in Comutability's decision register. Merging this file, or
+a comment on it, is not ratification by itself. Until then it describes how we intend to work.
+
+It sits under the Founding Charter v1.1 and the organisational proposal ORG-001 (community-led
+organisation, human-controlled operations). Where it disagrees with either, they win.
 
 Secure Net is a protocol other people build on, so changes to it follow their own process,
 separate from any application's release process. Commonveil and Veil Social are users of the
@@ -38,12 +42,17 @@ them.
   maintainer and grows to include independent contributors. It can reject changes proposed by
   Comutability's own product teams.
 - **Thresholds.** While the TSC has one member, that member decides, and says so in the record.
-  From three members: a majority to accept; two thirds, and no unresolved objection from a
-  security reviewer, for a breaking change. The TSC sets the exact rules once it has members to
-  set them.
+  Voting eligibility, quorum and the exact thresholds are for a separately approved governance
+  policy to set, not this file. As a starting suggestion for that policy: from three members, a
+  majority to accept; two thirds, and no unresolved objection from a security reviewer, for a
+  breaking change.
+- **Conflicts of interest.** A member with a material interest in a proposal says so, and
+  doesn't decide it alone.
 - **AI can prepare proposals, write implementations and tests, and review. It cannot be a
-  voting member of the committee**, and its approval never stands in for a human's. Work an AI
-  prepared says so.
+  voting member of the committee**, and its approval never stands in for a human's. An AI
+  doesn't approve its own security-sensitive changes, merge protected changes or publish
+  releases without the required human authorisation, or give itself more access. Work an AI
+  prepared says so, and has a named human responsible for it.
 
 ## Accountability
 
