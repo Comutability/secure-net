@@ -4,8 +4,18 @@
 decision-maker's approval is recorded in Comutability's decision register. Merging this file, or
 a comment on it, is not ratification by itself. Until then it describes how we intend to work.
 
-It sits under the Founding Charter v1.1 and the organisational proposal ORG-001 (community-led
-organisation, human-controlled operations). Where it disagrees with either, they win.
+It sits under the Founding Charter v1.1 and the proposals ORG-001 (community-led organisation,
+human-controlled operations) and GOV-002 (independent protocol stewardship, product
+architecture, human authority over AI). Where it disagrees with any of them, they win.
+
+## What "independent" means here
+
+Secure Net's technical direction isn't set by the needs of Commonveil, Veil Social or any other
+single application, including Comutability's own. Proposals can come from anyone. Independent
+implementations are welcome and none has privileged status for being Comutability's. Funding
+doesn't buy technical authority. The specifications, tests and implementation guidance stay
+public, so a compatible implementation never needs a private agreement with Comutability. The
+protocol requires no particular hosting platform, database, operating system or commercial API.
 
 Secure Net is a protocol other people build on, so changes to it follow their own process,
 separate from any application's release process. Commonveil and Veil Social are users of the
@@ -28,6 +38,11 @@ an algorithm, a rule for accepting or refusing something) goes through a numbere
 5. **It becomes part of a versioned specification only after the required review.** Until
    then, code for it is marked experimental and must not be the only option between sites.
 
+A proposal moves through: **Draft → Public Review → Technical Review → Accepted or Rejected →
+Implemented → Released**. Accepting a specification doesn't authorise anyone to deploy it:
+each application decides, tests compatibility and releases on its own. A critical security
+fix may be handled privately first and published afterwards with an advisory.
+
 **Breaking changes** (anything an up-to-date site and a site one version behind would disagree
 about) need a higher approval threshold and a **published migration plan**: who has to update,
 by when, what happens to those who haven't, and how to go back.
@@ -38,9 +53,13 @@ them.
 
 ## Who decides
 
-- **The Technical Steering Committee (TSC)** decides on SNIPs. It starts as the founding
-  maintainer and grows to include independent contributors. It can reject changes proposed by
-  Comutability's own product teams.
+- **The Technical Steering Committee (TSC)** decides on SNIPs. The aim is three to five
+  qualified human maintainers, including independent contributors as suitable people come
+  forward, chosen for their contributions, competence and willingness to be accountable. It can
+  reject changes proposed by Comutability's own product teams.
+- **For now** the founding steward coordinates a provisional maintainer group. Until a policy on
+  appointment, terms, quorum, appeals and removal is adopted, that group doesn't claim the
+  authority of a fully constituted independent committee, and its decisions say so.
 - **Thresholds.** While the TSC has one member, that member decides, and says so in the record.
   Voting eligibility, quorum and the exact thresholds are for a separately approved governance
   policy to set, not this file. As a starting suggestion for that policy: from three members, a
@@ -69,8 +88,16 @@ Comutability starts with **founder stewardship** and moves towards **elections**
 contributor community emerges. The steps, and what counts as "emerged", are for the Founding
 Charter and its supplementary decisions to set, not for this file.
 
+## Licence and contributions
+
+Secure Net is AGPL-3.0-only. Nothing here changes that. A licence change would need its own
+proposal, legal review, the permission of the people who hold rights in the code, and recorded
+human approval; rights already granted can't be withdrawn. Contributions keep clear attribution
+and compatible licensing, without copyright assignment unless a need for it is shown.
+
 ## Releases
 
 Versions follow semantic versioning. A release notes which SNIPs it contains and the status of
-each. Applications that keep a copy (Commonveil's `packages/secure-net`) check it against
+each. A new version of Secure Net never changes an application by itself: applications
+pin the version they use and adopt a new one through their own review. Applications that keep a copy (Commonveil's `packages/secure-net`) check it against
 `secure-net.manifest.json`.

@@ -2,37 +2,47 @@
 
 | | |
 | --- | --- |
-| Status | Draft / In review / Accepted / Rejected / Withdrawn |
-| Author | Name (say if prepared with or by an AI) |
+| Status | Draft / Public Review / Technical Review / Accepted / Rejected / Implemented / Released / Withdrawn |
+| Author | Name (say if prepared with or by an AI, and which human is responsible for it) |
 | Created | YYYY-MM-DD |
 | Specification | The CVP part(s) this changes or adds |
 | Breaking | Yes / No |
 
-## Problem
+## 1. Problem
 
 What's wrong or missing today, and for whom.
 
-## Proposal
+## 2. Proposed change
 
-What changes, precisely enough that someone else could implement it.
+Precisely enough that someone else could implement it.
 
-## Security
+## 3. Benefits and intended uses
 
-What an attacker gains or loses. What was considered and rejected, and why.
+## 4. Security and privacy
 
-## Compatibility
+What an attacker gains or loses. What each party learns that it didn't before.
 
-What happens between a site with this change and one without. For a breaking change, the
-migration plan: who updates, by when, what happens to those who haven't, how to go back.
+## 5. Compatibility
 
-## Reference implementation and tests
+What happens between a site with this change and one without.
 
-Where the code and tests are.
+## 6. Effects on independent implementations
 
-## Review
+What someone who isn't Comutability has to do, and whether anything here favours one
+implementation.
 
-Who examined it, and what they found.
+## 7. Alternatives considered
 
-## Decision
+## 8. Testing and migration
 
-The Technical Steering Committee's decision, date and reasons. Left empty until made.
+How it's tested. For a breaking change, the migration plan: who updates, by when, what happens
+to those who haven't, how to go back.
+
+## 9. Implementation evidence
+
+Where the reference implementation and tests are, and what they show.
+
+## 10. Reviewers and decision
+
+The humans who reviewed it and what they found. The decision, its date and reasons. Left empty
+until made. Accepting a proposal doesn't authorise deploying it.
