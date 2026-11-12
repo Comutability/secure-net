@@ -57,6 +57,7 @@ export const relayContext = ({ from, to, path }) => `${from}\n${to}\n${path}`;
  */
 export function relaySuite({ ml_kem768, ml_dsa65, subtle = globalThis.crypto.subtle, random = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n)) }) {
   const ECDH = { name: "ECDH", namedCurve: "P-256" };
+  let expanded = { seed: "", key: null };
 
   async function aesKey(ecdhShared, kemShared, context, transcript) {
     const ikm = await subtle.importKey("raw", concat(ecdhShared, kemShared), "HKDF", false, ["deriveKey"]);
@@ -159,7 +160,9 @@ export function relaySuite({ ml_kem768, ml_dsa65, subtle = globalThis.crypto.sub
 
     /** The post-quantum signature over a request's signature base (wire/federation.js signatureBase). */
     sign(sigSecret, text) {
-      return b64u(ml_dsa65.sign(enc(text), ml_dsa65.keygen(fromB64u(sigSecret)).secretKey));
+      // The signing key is expanded from its seed once, not for every request.
+      if (expanded.seed !== sigSecret) expanded = { seed: sigSecret, key: ml_dsa65.keygen(fromB64u(sigSecret)).secretKey };
+      return b64u(ml_dsa65.sign(enc(text), expanded.key));
     },
 
     verify(sigPublic, text, signature) {

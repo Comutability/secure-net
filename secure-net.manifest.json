@@ -1,8 +1,8 @@
 {
   "name": "secure-net",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "files": {
-    "package.json": "7s4Ci-uvSzkc2THie21YtgLSJ-cCr5HD06l3qEvLSsc",
+    "package.json": "tqWj_E0oyk6kTKAjl0yFvTxaOmOt8h3UDxZL0uhg13I",
     "README.md": "_0NFFrXM5D9R_LeIfMngCFU24w07RKBe4lfCzvD18zs",
     "LICENSE": "2KbMMavBa2dIx6IfIWEfWh7DP2fSLKI9faHBm5VJa-4",
     "src/commons/ledger.js": "1H0lyYpbzDpuCZtwVUSOskAHLBialPHa8HM0ODtrdvg",
@@ -28,9 +28,9 @@
     "src/identity/portable.js": "efpbB6eFpwZu7qJpAY7TSZJ6XtV5nmKNGlt0eZqWH3A",
     "src/index.js": "k_TrkKKK1msBKw-JC2VBhPfcN8fWda6-H5tLcIbF7aA",
     "src/tokens/voprf.js": "WrwBmXPvGNpBghXJf3llQDxXuo-RybkqGYBdEUw53zI",
-    "src/wire/features.js": "8UbgJw-ars46zbN945exk2N1kEtqLie2aJ22qpJ1nnY",
+    "src/wire/features.js": "1-u0YxSpDnlRC-jMRMRfbfcE4DBLpigSagXBhp-jXuk",
     "src/wire/federation.js": "HnQ4n5pgzyENwxVF9HCV2T_Rei1QlWFJZQD3soSjDJw",
-    "src/wire/sealed.js": "tygcKB3wVW6KwZpU1ZNegn9PpFwGhJsB9WHKnup21LA",
+    "src/wire/sealed.js": "Teu_LQT-V0zoZURAaMx2vSOWMKDb37Vi4eO9CTRAiKs",
     "spec/CVP-011-commons-ledger.md": "PmbEi8pvHArsMpSv1_lYm3AZw2vqtF0YyndVKUzsW14",
     "spec/CVP-012-governance.md": "I9oLgZw7xoCU1N29NHOTKShqi2e9PlKqEMwf5vceHls",
     "spec/CVP-013-tokens.md": "2ShPi3ic4Pn4xNa56IulrBDaeYu_7NjDpnP8NuxFeT8",
