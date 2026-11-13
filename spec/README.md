@@ -9,7 +9,7 @@ tests (CVP-010).
 | CVP-000 | Scope, terms, goals, threat model | This page and INTEROPERABILITY.md | |
 | CVP-001 | Identifiers, keys, signatures, rotation, recovery, personas, migration | Implemented | `crypto/identity`, `crypto/recovery`, `identity/portable` |
 | CVP-002 | Canonical encoding, signed records, replay protection | Implemented | `core/canonical`, `core/signed` |
-| CVP-003 | Direct and group encryption, devices | Implemented (pairwise sealing; MLS is future work) | `crypto/envelope`, `crypto/serverKeys`, `crypto/kem` |
+| CVP-003 | Direct and group encryption, devices | Implemented; superseded for new messages by CVP-016 | `crypto/envelope`, `crypto/serverKeys`, `crypto/kem` |
 | CVP-004 | Spaces, channels, membership, policy | Implemented in the ledger | `commons/ledger` |
 | CVP-005 | Site-to-site federation | Implemented (`commonveil/1`) | `wire/federation` |
 | CVP-006 | Attachments, retention, backup | In Commonveil; to move here | |
@@ -22,6 +22,7 @@ tests (CVP-010).
 | CVP-013 | Private tokens (RFC 9497) | Implemented | `tokens/voprf` ([CVP-013](CVP-013-tokens.md)) |
 | CVP-014 | Consent capsules | Implemented | `consent/capsule` |
 | CVP-015 | Quantum resistance and the sealed relay | Implemented | `wire/sealed`, `core/signed` ([CVP-015](CVP-015-quantum-resistance.md)) |
+| CVP-016 | End-to-end sessions: post-quantum handshake, ratchet, devices, groups, new devices | Draft, implemented, awaiting human review | `session/*` ([CVP-016](CVP-016-sessions.md)) |
 
 ## Goals (CVP-000)
 

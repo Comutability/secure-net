@@ -12,6 +12,7 @@ Deno, and needs no particular backend, database or host.
 
 | Module | What it does | Spec |
 | --- | --- | --- |
+| `session/*` | **End-to-end messaging, post-quantum.** A handshake and double ratchet built on X25519 and ML-KEM-768 together, Ed25519 + ML-DSA-65 keys, several devices per person, groups, and moving history to a new device. Draft: awaiting human cryptographic review. | CVP-016 |
 | `core/canonical`, `core/signed` | One byte-exact encoding for everything signed, and the signed-record envelope every other module uses. | CVP-002 |
 | `crypto/*` | Account key chains, device certificates, end-to-end envelopes, post-quantum hybrid sealing, recovery phrases, community keys. The same code Commonveil runs. | CVP-001, CVP-003 |
 | `wire/federation`, `wire/features` | How sites sign requests to each other, which addresses they may connect to, and how two sites agree on features. | CVP-005, CVP-008 |
@@ -43,11 +44,27 @@ const state = ledger.replay([g]);              // any copy checks every block it
 ledger.chooseHost(state, announcements, { unreachable: new Set(["home.example"]) }); // -> { site: "mirror.example", role: "acting" }
 ```
 
+End-to-end messages between two devices (the full walk-through, with several devices, a group
+and a new device, is [`examples/two-party.mjs`](examples/two-party.mjs): `npm run example`):
+
+```js
+import * as s from "@comutability/secure-net/session";
+// Bob publishes prekeys; Alice fetches a bundle and checks it against Bob's account key.
+let alice = s.initiate({ me: { device, deviceList }, bundle, accountKey: bobsAccountKey });
+const { state, message } = await s.encrypt(alice, "Hello");   // send `message` through any relay
+// On Bob's device:
+const r = await s.respond({ me: { device, deviceList, prekeys }, message, accountKey: alicesAccountKey });
+// r.plaintext; store r.state and r.prekeys (the one-time prekeys used are gone)
+```
+
+Show people `s.safetyNumber(theirs, yours)` to compare, and warn when an account key changes.
+
 ## Working on it
 
 ```bash
 npm install
 npm test                          # node --test
+npm run vectors                   # after changing session/primitives: rewrites spec/vectors
 node scripts/manifest.mjs         # after any change: updates secure-net.manifest.json
 ```
 

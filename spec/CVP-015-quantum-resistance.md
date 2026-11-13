@@ -5,11 +5,14 @@ records traffic today to decrypt later, and what doesn't yet.
 
 | Part | Protection | Status |
 | --- | --- | --- |
-| Message content, attachments, community keys | Hybrid: ECDH P-256 and ML-KEM-768, AES-256-GCM (`crypto/kem`) | Quantum-resistant already |
+| One-to-one and group messages (CVP-016) | X25519 and ML-KEM-768 handshake; ratchet mixing fresh X25519 and ML-KEM-768 secrets every round trip; AES-256-GCM (`session/*`) | Quantum-resistant, with forward secrecy. Draft awaiting human review. |
+| Message content, attachments, community keys (older envelope) | Hybrid: ECDH P-256 and ML-KEM-768, AES-256-GCM (`crypto/kem`), with a classical fallback and no forward secrecy | Superseded by CVP-016 for new messages |
 | The relay between sites (who writes to whom, where, when) | Sealed site to site: ECDH P-256 and ML-KEM-768 (FIPS 203), HKDF-SHA-256, AES-256-GCM (`wire/sealed`) | Quantum-resistant |
 | Relay authenticity (which site sent it) | Ed25519 and ML-DSA-65 (FIPS 204); both must verify | Quantum-resistant |
 | Signed records: ledger blocks, motions, ballots, results, consent, manifests | Ed25519 and ML-DSA-65 with a quantum-resistant key (`generateSigningKey({ pq: true })`) | Quantum-resistant when such a key is used |
-| Account and device signatures on messages | ECDSA P-256 | Classical. Forging needs a quantum computer at the time, not a recording; moving to hybrid needs every device to re-certify. Next. |
+| Account and device keys (CVP-016) | Ed25519 and ML-DSA-65 on device lists and prekeys | Quantum-resistant |
+| Group message authorship (CVP-016) | Ed25519 | Classical by choice (size). Forging needs a quantum computer at the time and group membership; confidentiality is unaffected. |
+| Account and device signatures in the older envelope | ECDSA P-256 | Classical; goes away as apps move to CVP-016 |
 | Private tokens (CVP-013) | VOPRF on P-256 | Unlinkability doesn't rest on any hardness assumption; forging a token is classical. No standardised post-quantum VOPRF exists yet. |
 | Symmetric encryption and hashes | AES-256-GCM, SHA-256, HKDF | Adequate against known quantum attacks |
 
