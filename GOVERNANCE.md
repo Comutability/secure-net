@@ -23,9 +23,11 @@ protocol like anyone else: their teams can propose changes, and can be turned do
 
 ## Changing the protocol: Secure Net Improvement Proposals (SNIPs)
 
-Any change to what two implementations must agree on (a specification in `spec/`, a wire format,
-an algorithm, a rule for accepting or refusing something) goes through a numbered proposal in
-[`snips/`](snips/).
+Any change to what two implementations must agree on (a specification in `spec/`, a registry
+entry, a wire format, an algorithm, a rule for accepting or refusing something) goes through a
+numbered proposal in [`snips/`](snips/). [CVP-000](spec/CVP-000-framework.md) sets out how such a
+change is classified (editorial, additive or breaking), versioned and, when the time comes,
+retired.
 
 1. **A public proposal** describes the problem and the intended solution
    ([template](snips/SNIP-TEMPLATE.md)). Anyone may write one.
