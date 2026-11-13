@@ -33,7 +33,12 @@ export function dhKeyPair(secret = x25519.utils.randomSecretKey()) {
 }
 
 export function dh(sk, pk) {
-  const out = x25519.getSharedSecret(fromB64u(sk), fromB64u(pk));
+  let out;
+  try {
+    out = x25519.getSharedSecret(fromB64u(sk), fromB64u(pk));
+  } catch {
+    throw new SessionError("BAD_KEY", "Not a usable X25519 key");
+  }
   // An all-zero result means the peer sent a low-order point: refuse it (RFC 7748, section 6.1).
   if (out.every((b) => b === 0)) throw new SessionError("BAD_KEY", "Key agreement produced a weak result");
   return out;
@@ -45,15 +50,23 @@ export function kemKeyPair(seed = random(64)) {
 }
 
 /** Encapsulate to an ML-KEM-768 public key. Returns the ciphertext (base64url) and shared secret. */
+const decode = (s, code, what) => {
+  try {
+    return fromB64u(s);
+  } catch {
+    throw new SessionError(code, `Not ${what}`);
+  }
+};
+
 export function encapsulate(pk, coins) {
-  const key = fromB64u(pk);
+  const key = decode(pk, "BAD_KEY", "an ML-KEM-768 public key");
   if (key.length !== 1184) throw new SessionError("BAD_KEY", "Not an ML-KEM-768 public key");
   const { cipherText, sharedSecret } = coins ? ml_kem768.encapsulate(key, coins) : ml_kem768.encapsulate(key);
   return { ct: b64u(cipherText), ss: sharedSecret };
 }
 
 export function decapsulate(ct, sk) {
-  const c = fromB64u(ct);
+  const c = decode(ct, "BAD_MESSAGE", "an ML-KEM-768 ciphertext");
   if (c.length !== 1088) throw new SessionError("BAD_MESSAGE", "Not an ML-KEM-768 ciphertext");
   return ml_kem768.decapsulate(c, fromB64u(sk));
 }

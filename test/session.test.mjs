@@ -237,3 +237,17 @@ test("the code matches the published test vectors (spec/vectors/cvp-016-v1.json)
   const published = JSON.parse(fs.readFileSync(new URL("../spec/vectors/cvp-016-v1.json", import.meta.url), "utf8"));
   assert.deepEqual(await vectors(), published);
 });
+
+test("hostile headers are refused with stable codes and leave the session usable", async () => {
+  const { a, b } = await pair();
+  const y = await encrypt(b, "yo");
+  const h = y.message.h;
+  const cases = {
+    BAD_KEY: [{ ...h, dh: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }, { ...h, kem: "AAAA" }],
+    BAD_MESSAGE: [{ ...h, dh: "__proto__" }, { ...h, n: -1 }, { ...h, ct: "x" }],
+    DECRYPT_FAILED: [{ ...h, extra: 1 }, { ...h, pn: 1e9 }],
+  };
+  for (const [want, headers] of Object.entries(cases)) for (const bad of headers) assert.equal(await code(decrypt(a, { ...y.message, h: bad })), want, JSON.stringify(Object.keys(bad)));
+  assert.equal(await code(decrypt(a, { ...y.message, c: "@@" })), "BAD_MESSAGE");
+  assert.equal(text((await decrypt(a, y.message)).plaintext), "yo");
+});

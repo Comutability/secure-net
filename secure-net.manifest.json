@@ -36,8 +36,8 @@
     "src/session/history.js": "jExVIbPTGfuno7-S6lOtCSaiwDUIAh9-b31mTzk-XDk",
     "src/session/index.js": "W59aTKpc2NP0P9-Bgp7rJl8KyrVAFwjBQ93YlX3Jd2s",
     "src/session/keys.js": "qxkhqbYMC5UGlsQUMOiyaBy0EULyErt3j7t6Q_85XOE",
-    "src/session/primitives.js": "CBkzW9gMn6AG8ODmTQZux9pXe7N_Dyo7qjrvaadqxFg",
-    "src/session/session.js": "X0TPgUuUq1A93Cch8IVKta4QWrzP3sIfJdVcIQ-wX34",
+    "src/session/primitives.js": "ylFXKKy3Up21foGQd0Goec1rvNPpDrbS0YD7f5eDDIA",
+    "src/session/session.js": "m-0Tq76pKnWswjFr-xHjYyr5TTFmkrWb0dAqgDnn7oA",
     "src/tokens/voprf.js": "WrwBmXPvGNpBghXJf3llQDxXuo-RybkqGYBdEUw53zI",
     "src/wire/features.js": "0Z0gPxU5ws4k4vqrzFSjiQNxPUdEQ9XaXxDsFoC9vJ0",
     "src/wire/federation.js": "HnQ4n5pgzyENwxVF9HCV2T_Rei1QlWFJZQD3soSjDJw",
@@ -56,7 +56,7 @@
     "test/identity-consent-extensions.test.mjs": "qtYbdV7Jv64F0AyhdStvqejQEWuL6_9x5T3wLpq0Duw",
     "test/ledger.test.mjs": "AoJ_zi_YatnJleVsZ5c9gOc20cO8Z6V-Gq-OAcDRr1M",
     "test/pq.test.mjs": "uWLBUr4k7bdLNOqzltad_VkPOzGSZuERUDIF-VWoKkE",
-    "test/session.test.mjs": "1MbCX3ZqGo5ibGCxgsVoptwPBmZonnZJ_cfdgBTkcIk",
+    "test/session.test.mjs": "T6mnHVZl2rPZlNoUTEi9grcb2SJIdodijlg3VU9B0QA",
     "examples/two-party.mjs": "myGpqy5N7j8PRGquI1I6SDZ7hJ6E6q5X-SWfyfdux2M",
     "scripts/vectors.mjs": "CVPFmj6DVJfP6oGucGQ1RDsEpnIp8jvGD5imujXTrSM"
   }

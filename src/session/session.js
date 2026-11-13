@@ -21,7 +21,13 @@ export const MAX_STORED = 2000;
 
 const clone = (s) => JSON.parse(JSON.stringify(s));
 const B64U = /^[A-Za-z0-9_-]+$/;
-const isKey32 = (k) => typeof k === "string" && B64U.test(k) && fromB64u(k).length === 32;
+const isKey32 = (k) => {
+  try {
+    return typeof k === "string" && B64U.test(k) && fromB64u(k).length === 32;
+  } catch {
+    return false;
+  }
+};
 
 function transcript(initiator, responder, x) {
   return {
@@ -198,7 +204,12 @@ export async function decrypt(state, message) {
   const s = clone(state);
   const h = message.h;
   const ad = adOf(s, h, message.x);
-  const c = fromB64u(message.c);
+  let c;
+  try {
+    c = fromB64u(message.c);
+  } catch {
+    throw new SessionError("BAD_MESSAGE", "Bad ciphertext");
+  }
   const id = `${h.dh}:${h.n}`;
   let mk;
   if (s.skipped[id]) {
