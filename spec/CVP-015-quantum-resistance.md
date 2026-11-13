@@ -1,5 +1,14 @@
 # CVP-015: Quantum resistance
 
+| | |
+| --- | --- |
+| Status | Draft |
+| Version | 1 |
+| Feature | `cvp.sealed-relay` (version 1), `cvp.pq-signatures` (version 1) |
+| Depends on | CVP-002, CVP-005 |
+| Code | `src/wire/sealed.js`, `src/core/signed.js` |
+| Proposed in | [SNIP-0002](../snips/SNIP-0002.md) |
+
 What in the protocol resists an attacker with a large quantum computer, including one who
 records traffic today to decrypt later, and what doesn't yet.
 
@@ -45,3 +54,27 @@ can break the classical parts can't talk a site back down to them.
 "End to end" here means site to site: nothing between the two sites (network, CDN, hosting
 platform proxy) can read or alter a relayed request. The two sites themselves still see what
 they need to route it, as before; message content stays readable only on people's devices.
+
+## Security and privacy
+
+The table at the top of this part is its security summary: what is quantum-resistant, what is
+classical and why. For the sealed relay specifically:
+
+- **Protected:** relayed requests and replies, from everything between the two sites, now and
+  against an attacker who records traffic to decrypt later; downgrade to unsealed or
+  singly-signed requests once a site has published relay keys.
+- **Not protected:** what the two sites themselves see (who writes to whom, when, how much);
+  first contact, where relay keys are pinned on trust; a site whose relay keys change needs an
+  admin to accept the change, which an attacker may try to talk them into.
+
+## Conformance
+
+`test/pq.test.mjs` covers hybrid signatures and the sealed relay. CVP-002's vectors cover hybrid
+signed records. Vectors for sealing are still to write (CVP-010, section 6).
+
+## Changes
+
+| Version | Date | SNIP | Change |
+| --- | --- | --- | --- |
+| 1 | 2026-11-12 | SNIP-0002 | First version, in Secure Net 0.3.0 |
+| 1 | 2026-11-13 | SNIP-0003 | Editorial: table updated for CVP-016 sessions |

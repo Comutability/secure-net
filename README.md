@@ -23,7 +23,11 @@ Deno, and needs no particular backend, database or host.
 | `consent/capsule` | Specific, time-limited, revocable permissions, honest about what revoking can't undo. | CVP-014 |
 | `extensions/manifest` | Extension manifests (what runs where, with which permissions, pinned code) and theme packages (data only, contrast-checked). | CVP-008 |
 
-The specs are in [`spec/`](spec/). [`spec/INTEROPERABILITY.md`](spec/INTEROPERABILITY.md)
+The specs are in [`spec/`](spec/). [CVP-000](spec/CVP-000-framework.md) says how the standard is
+written, versioned and changed; [`spec/registry.json`](spec/registry.json) lists every name two
+implementations must agree on; [CVP-010](spec/CVP-010-conformance.md) says how another
+implementation shows it conforms; and `npm run standards` checks that the code, registries and
+documents agree. [`spec/INTEROPERABILITY.md`](spec/INTEROPERABILITY.md)
 explains how sites run by different people stay private, end-to-end encrypted and able to talk.
 
 ## Using it
