@@ -1,6 +1,6 @@
 // Feature negotiation (CVP-008): each site publishes what it speaks, and two sites use what both
 // support. Unknown features are ignored, never errors, so sites can upgrade one at a time.
-export const SECURE_NET_VERSION = "0.5.0";
+export const SECURE_NET_VERSION = "0.6.0";
 
 /** Everything this version of Secure Net implements, with the version of each. */
 export const FEATURES = {
@@ -12,6 +12,7 @@ export const FEATURES = {
   "cvp.actors": 1, // self-certifying actor documents and handles (social/actor.js)
   "cvp.activities": 1, // ActivityStreams vocabulary, signed on devices (social/vocabulary.js, social/activity.js)
   "cvp.delivery": 2, // public, direct and audience envelopes; 2: unlinkable direct envelopes, sealed sending, unsigned direct activities, group envelopes (social/delivery.js)
+  "cvp.groups": 1, // key packages and group envelopes for MLS groups (groups/)
   "cvp.repos": 1, // signed repositories of public activities, and the change feed (social/repo.js)
   "cvp.lexicons": 1, // extension object types named by domain (social/lexicon.js)
   "cvp.envelope": 1, // account-wide envelopes; superseded by cvp.sessions for new messages (crypto/envelope.js)

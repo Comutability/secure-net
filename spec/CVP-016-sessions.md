@@ -3,11 +3,11 @@
 | | |
 | --- | --- |
 | Status | Draft (merged into the reference implementation; awaiting human cryptographic review) |
-| Version | 1 |
-| Feature | `cvp.sessions` (version 1) |
+| Version | 2 |
+| Feature | `cvp.sessions` (version 2; version 1 deprecated, still accepted) |
 | Depends on | CVP-002 |
 | Code | `src/session/` |
-| Proposed in | [SNIP-0003](../snips/SNIP-0003.md) |
+| Proposed in | [SNIP-0003](../snips/SNIP-0003.md); version 2 in [SNIP-0006](../snips/SNIP-0006.md) |
 
 How two devices agree keys, exchange messages and keep them private, including from an attacker
 who records everything today and has a large quantum computer later. It covers one-to-one
@@ -177,6 +177,10 @@ recently received a message on (the reference code leaves this choice to the app
 
 ## Groups
 
+From Secure Net 0.6.0, conversations among a group of members SHOULD use CVP-022 (MLS), which
+locks out a removed or compromised member with one commit. Sender keys, described here, remain
+the way one author seals for many readers (CVP-019 audiences).
+
 Each member device has a sender key per group: a random 32-byte chain key, a counter and an
 Ed25519 key pair. It sends `{ type: "sender-key", group, id, ck, n, sign }` to every other member
 device over their one-to-one sessions; the receiver records which session it came on, never
@@ -221,12 +225,143 @@ Sending the ML-KEM fields only until the peer acknowledges them, or splitting th
 messages as Signal's SPQR does, would cut the per-message cost; that is future work and would be
 a new version.
 
+## Version 2
+
+Version 2 changes the handshake and the ratchet of one-to-one sessions. Keys, bundles, devices,
+sender keys and new devices are unchanged. It is implemented in `src/session/v2.js` (Secure Net
+0.6.0) and, like version 1, has **not been reviewed by a qualified human cryptographer**.
+
+A device says it speaks version 2 with `"sessions": 2` in the body of its signed prekey. The
+member is signed, so a site can't remove it. An initiator MUST use the highest version both
+devices speak, and MUST NOT start a lower version with a device it has already seen speak a
+higher one. Version 1 is deprecated: implementations MUST still accept it and SHOULD NOT start
+it where the peer speaks version 2. Labels are `secure-net/session/v2/<purpose>`.
+
+What changes, and why:
+
+| Change | Why |
+| --- | --- |
+| The transcript binds each prekey's public key, not only its id | A site that swapped a prekey for another with the same id would otherwise go unnoticed by the transcript. No attack on version 1 is known; this removes the question |
+| The initiator's identity is encrypted in the first message | A site carrying a first message can no longer tell who is writing |
+| Headers are encrypted | Messages of one session can't be linked, counted or ordered by anyone but the two devices; there is no session tag (CVP-019) |
+| ML-KEM keys and ciphertexts travel in pieces inside headers | An ordinary message carries 256 bytes of ML-KEM material at most, instead of 2,272 |
+| Keys for messages that haven't arrived expire | A stolen state holds fewer old keys |
+
+### Handshake
+
+As in version 1, with these differences.
+
+```
+hidden = X25519(EK_A, SPK_B) [|| X25519(EK_A, OPK_B)]
+IDK    = HKDF-SHA-256(ikm = 0xFF*32 || hidden || SS, salt = 0x00*32,
+                      info = "secure-net/session/v2/identity" ||
+                             SHA-256(canonical({ ek, ct: SHA-256(CT), signed, pq, oneTime })), 44 bytes)
+id     = AES-256-GCM(key = IDK[0..32], iv = IDK[32..44], canonical({ list, device }))
+x      = { ek, ct, signed, pq, oneTime, id }
+
+TH = SHA-256("secure-net/session/v2/transcript" || canonical({
+       v: 2, initiator, responder, ek, ct: SHA-256(CT),
+       signed:  { id, pub: SPK_B },
+       pq:      { id, pub: SHA-256(PQPK_B) },
+       oneTime: null | { id, pub: OPK_B } }))
+
+RK || HK_A || NHK_B = HKDF-SHA-256(ikm = 0xFF*32 || DH1 || DH2 || DH3 [|| DH4] || SS,
+                                   salt = 0x00*32, info = "secure-net/session/v2/handshake" || TH, 96 bytes)
+```
+
+`IDK` uses only the ephemeral key and the prekeys, so the responder can open `id` before it
+knows who the initiator is, and nobody without the prekey secrets can. The responder opens `id`,
+checks the device list as in version 1, then derives the rest. `HK_A` is the initiator's first
+sending header key; `NHK_B` is the responder's.
+
+Hiding the identity this way protects it from sites and from anyone who records the message. It
+does not protect it from someone who later takes the recipient's prekey secrets (until the
+signed and last-resort prekeys are replaced and deleted).
+
+### Ratchet
+
+A double ratchet with encrypted headers, following section 4 of Signal's Double Ratchet
+specification, with a sparse ML-KEM exchange carried in the headers.
+
+```
+KDF_RK(RK, dh, ss) = HKDF-SHA-256(ikm = dh || ss, salt = RK, info = "secure-net/session/v2/root", 96 bytes)
+                   -> RK' || CK || NHK
+KDF_CK             as in version 1
+KEY || IV          = HKDF-SHA-256(MK, salt = 0x00*32, info = "secure-net/session/v2/message", 44 bytes)
+```
+
+A message is `{ v: 2, h, x?, c }`:
+
+- `h` is base64url of a random 12-byte IV followed by AES-256-GCM, under the sender's current
+  header key and with `TH` as associated data, of the canonical JSON header
+  `{ dh, pn, n, pe?, k? }`.
+- `c` is AES-256-GCM under `KEY`/`IV`, with associated data `TH || canonical({ h })`, or
+  `TH || canonical({ h, x })` while the handshake is still being sent.
+
+A receiver tries, in order: the header keys it holds for messages it is waiting for; its current
+receiving header key; its next receiving header key (which means the peer has started a new
+chain, so the ratchet steps exactly as in the Double Ratchet specification, with header keys
+moving along with it). If none opens `h`, the message isn't for this session. A device with
+several sessions finds the right one the same way: nothing outside the ciphertext says which it
+is.
+
+Limits: at most 1,000 messages skipped in one chain; at most 2,000 keys kept; a key for a
+message that hasn't arrived MUST be deleted 7 days after it was made.
+
+### Sparse ML-KEM
+
+Epochs are numbered from 1. In each epoch one side (the initiator in odd epochs) sends a fresh
+ML-KEM-768 encapsulation key and the other answers with a ciphertext, both in pieces of 256
+bytes (5 pieces each) carried in `k`:
+
+| `k` | Sent by | Until |
+| --- | --- | --- |
+| `{ e, t: "ek", i, d }` | the side sending the key, one piece per message, in turn | it receives any ciphertext piece for `e` |
+| `{ e, t: "ct", i, d }` | the other side, once it has every key piece and has encapsulated | it receives an acknowledgement for `e` |
+| `{ e, t: "ack" }` | the side that sent the key, once it has every ciphertext piece and has decapsulated | it mixes the secret |
+
+A piece is only acted on after its message has decrypted, so pieces are authenticated by the
+session. Pieces for any epoch but the current one are ignored.
+
+The side that sent the key mixes the shared secret into the root chain at its next new sending
+chain, as the `ss` of that `KDF_RK` step, and puts `pe: e` in every header of that chain. A
+receiver starting a new receiving chain whose header carries `pe` MUST have made the secret for
+exactly that epoch itself and MUST refuse the message otherwise; it mixes the same secret into
+that step. Both sides then move to epoch `e + 1` with the roles swapped. Steps without `pe` use
+an empty `ss`.
+
+What this gives, and what it costs compared with version 1: each completed exchange puts a new
+ML-KEM secret under every later key, so the session recovers from a compromise against a
+quantum attacker as well as a classical one. Version 1 did that at every reply; version 2 does
+it about once per 22 messages of back-and-forth, and X25519 still ratchets at every reply. An
+attacker who can drop messages can't pick out the ones carrying a particular piece, because
+headers are encrypted, but dropping everything stalls the exchange as it stalls the
+conversation. `pqStatus` reports the epoch and how many secrets have been mixed in, so an app can
+show or act on a session that hasn't refreshed for a long time.
+
+### Deniability
+
+Nothing in a version 2 session is signed by a long-term key over the conversation: device lists
+and prekeys are signed, but they are public, and each side could have produced the whole
+exchange alone. With unsigned direct activities (CVP-019) a recipient can read and trust a
+message without being able to prove to anyone else who wrote it. This is the same offline
+deniability X3DH and PQXDH aim for; it has not been analysed for this protocol.
+
+### Sizes
+
+| Thing | Version 1 | Version 2 |
+| --- | --- | --- |
+| Ordinary message, before content | about 3.1 KB | about 0.2 KB, or 0.7 KB while a piece is being carried (0.4 KB on average in a back-and-forth) |
+| First message (carries the handshake and the sender's device list) | about 16 KB | about 16 KB |
+
 ## Conformance
 
 `test/session.test.mjs` and the vectors in [vectors/cvp-016-v1.json](vectors/cvp-016-v1.json)
 (written by `scripts/vectors.mjs`). The X25519, HKDF, HMAC and AES-GCM vectors have been checked
 against Node's built-in crypto, an independent implementation; the ML-KEM-768 vector comes from
 @noble/post-quantum and has not been checked against a second implementation yet.
+Version 2: `test/session2.test.mjs` and [vectors/cvp-016-v2.json](vectors/cvp-016-v2.json), whose
+HKDF derivations have been checked against an independent implementation (Python's `hmac`).
 `examples/two-party.mjs` runs the whole protocol through a relay that keeps a copy of everything
 and checks no plaintext is in it.
 
@@ -242,3 +377,4 @@ a separate change with its own migration plan.
 | --- | --- | --- | --- |
 | 1 | 2026-11-13 | SNIP-0003 | First version, in Secure Net 0.4.0 |
 | 1 | 2026-11-13 | SNIP-0004 | Editorial: standard header; labels registered |
+| 2 | 2026-11-14 | SNIP-0006 | Version 2 of one-to-one sessions: bound prekeys, hidden initiator, encrypted headers, sparse ML-KEM, expiring skipped keys. Version 1 deprecated. Groups move to CVP-022; sender keys stay for audiences |

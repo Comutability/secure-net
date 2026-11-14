@@ -1,0 +1,291 @@
+{
+  "description": "CVP-019 delivery, version 2. `problems` is how many problems a conforming implementation finds (0 means well formed); `accepted` is whether a sealed delivery body is well formed (the token is then checked against the recipient's verifiers).",
+  "deliveryToken": {
+    "token": "ERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzA",
+    "verifier": "DgBwi4mSUgMIIQ7YpDj7KiIQZzK9VICmBz-pzy7REhg",
+    "note": "verifier = base64url(SHA-256(\"secure-net/social/v2/delivery-token\\n\" || the 32 token bytes))"
+  },
+  "envelopes": [
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "direct",
+        "device": "BBBBBBBBBBBBBBBBBBBBBB",
+        "message": {
+          "v": 2,
+          "h": "AAAA",
+          "c": "AAAA"
+        }
+      },
+      "problems": 0
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "direct",
+        "device": "BBBBBBBBBBBBBBBBBBBBBB",
+        "message": {
+          "v": 2,
+          "h": "AAAA",
+          "c": "AAAA",
+          "x": {
+            "ek": "AAAA"
+          }
+        }
+      },
+      "problems": 0
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "group",
+        "group": "group:gggggggggggggggg",
+        "message": "AAAA"
+      },
+      "problems": 0
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "direct",
+        "device": "BBBBBBBBBBBBBBBBBBBBBB",
+        "message": {
+          "v": 2,
+          "h": "AAAA",
+          "c": "AAAA"
+        },
+        "session": "CCCCCCCCCCCCCCCCCCCCCC"
+      },
+      "problems": 1
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "direct",
+        "device": "BBBBBBBBBBBBBBBBBBBBBB",
+        "message": {
+          "v": 2,
+          "h": "AAAA",
+          "c": "AAAA"
+        },
+        "from": "AAAAAAAAAAAAAAAAAAAAAA"
+      },
+      "problems": 1
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "direct",
+        "device": "BBBBBBBBBBBBBBBBBBBBBB",
+        "message": {
+          "v": 2,
+          "h": "AAAA",
+          "c": "AAAA",
+          "n": 1
+        }
+      },
+      "problems": 1
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "direct",
+        "device": "BBBBBBBBBBBBBBBBBBBBBB",
+        "message": {
+          "v": 1,
+          "c": "AAAA"
+        }
+      },
+      "problems": 1
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "group",
+        "group": "not-a-group",
+        "message": "AAAA"
+      },
+      "problems": 1
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "group",
+        "group": "group:gggggggggggggggg",
+        "message": {
+          "c": "AAAA"
+        }
+      },
+      "problems": 1
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "audience",
+        "audience": "AAAAAAAAAAAAAAAAAAAAAA:xxxxxxxxxxxxxxxx",
+        "message": {}
+      },
+      "problems": 1
+    },
+    {
+      "envelope": {
+        "v": 2,
+        "mode": "public",
+        "activity": {}
+      },
+      "problems": 1
+    },
+    {
+      "envelope": {
+        "v": 1,
+        "mode": "group",
+        "group": "group:gggggggggggggggg",
+        "message": "AAAA"
+      },
+      "problems": 1
+    }
+  ],
+  "sealed": [
+    {
+      "body": {
+        "v": 1,
+        "items": [
+          {
+            "to": "AAAAAAAAAAAAAAAAAAAAAA",
+            "envelope": {
+              "v": 2,
+              "mode": "direct",
+              "device": "BBBBBBBBBBBBBBBBBBBBBB",
+              "message": {
+                "v": 2,
+                "h": "AAAA",
+                "c": "AAAA"
+              }
+            },
+            "token": "ERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzA"
+          }
+        ]
+      },
+      "accepted": true
+    },
+    {
+      "body": {
+        "v": 1,
+        "items": [
+          {
+            "to": "AAAAAAAAAAAAAAAAAAAAAA",
+            "envelope": {
+              "v": 2,
+              "mode": "group",
+              "group": "group:gggggggggggggggg",
+              "message": "AAAA"
+            },
+            "token": "ERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzA"
+          }
+        ]
+      },
+      "accepted": true
+    },
+    {
+      "body": {
+        "v": 1,
+        "items": [
+          {
+            "to": "AAAAAAAAAAAAAAAAAAAAAA",
+            "envelope": {
+              "v": 2,
+              "mode": "direct",
+              "device": "BBBBBBBBBBBBBBBBBBBBBB",
+              "message": {
+                "v": 2,
+                "h": "AAAA",
+                "c": "AAAA"
+              }
+            },
+            "token": "ERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzA",
+            "from": "AAAAAAAAAAAAAAAAAAAAAA"
+          }
+        ]
+      },
+      "accepted": false,
+      "code": "BAD_MESSAGE"
+    },
+    {
+      "body": {
+        "v": 1,
+        "items": [
+          {
+            "to": "AAAAAAAAAAAAAAAAAAAAAA",
+            "envelope": {
+              "v": 2,
+              "mode": "direct",
+              "device": "BBBBBBBBBBBBBBBBBBBBBB",
+              "message": {
+                "v": 2,
+                "h": "AAAA",
+                "c": "AAAA"
+              }
+            },
+            "token": "short"
+          }
+        ]
+      },
+      "accepted": false,
+      "code": "BAD_MESSAGE"
+    },
+    {
+      "body": {
+        "v": 1,
+        "items": [
+          {
+            "to": "AAAAAAAAAAAAAAAAAAAAAA",
+            "envelope": {
+              "v": 1,
+              "mode": "direct",
+              "device": "BBBBBBBBBBBBBBBBBBBBBB",
+              "session": "CCCCCCCCCCCCCCCCCCCCCC",
+              "message": {
+                "v": 1,
+                "c": "AAAA"
+              }
+            },
+            "token": "ERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzA"
+          }
+        ]
+      },
+      "accepted": false,
+      "code": "BAD_MESSAGE"
+    },
+    {
+      "body": {
+        "v": 1,
+        "items": []
+      },
+      "accepted": false,
+      "code": "BAD_MESSAGE"
+    },
+    {
+      "body": {
+        "v": 2,
+        "items": [
+          {
+            "to": "AAAAAAAAAAAAAAAAAAAAAA",
+            "envelope": {
+              "v": 2,
+              "mode": "direct",
+              "device": "BBBBBBBBBBBBBBBBBBBBBB",
+              "message": {
+                "v": 2,
+                "h": "AAAA",
+                "c": "AAAA"
+              }
+            },
+            "token": "ERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzA"
+          }
+        ]
+      },
+      "accepted": false,
+      "code": "BAD_MESSAGE"
+    }
+  ]
+}

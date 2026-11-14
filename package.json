@@ -1,6 +1,6 @@
 {
   "name": "@comutability/secure-net",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Secure Net: the Commonveil Protocol. Private, end-to-end encrypted, federated communication that any app or site can use.",
   "type": "module",
   "license": "AGPL-3.0-only",
@@ -24,7 +24,9 @@
     "./session/*": "./src/session/*.js",
     "./social": "./src/social/index.js",
     "./social/*": "./src/social/*.js",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./groups": "./src/groups/mls.js",
+    "./groups/*": "./src/groups/*.js"
   },
   "files": [
     "src",
@@ -57,14 +59,23 @@
     "ts-mls": {
       "@noble/curves": "$@noble/curves",
       "@noble/post-quantum": "$@noble/post-quantum",
-      "@noble/ciphers": "2.4.0",
-      "@hpke/chacha20poly1305": "1.8.0",
-      "@hpke/dhkem-x448": "1.8.0",
-      "@hpke/ml-kem": "0.3.0"
+      "@noble/ciphers": "2.4.0"
     }
   },
   "devDependencies": {
     "@hpke/hybridkem-x-wing": "^0.7.0",
     "ts-mls": "^1.6.4"
+  },
+  "peerDependencies": {
+    "ts-mls": "1.6.4",
+    "@hpke/hybridkem-x-wing": "0.7.0"
+  },
+  "peerDependenciesMeta": {
+    "ts-mls": {
+      "optional": true
+    },
+    "@hpke/hybridkem-x-wing": {
+      "optional": true
+    }
   }
 }

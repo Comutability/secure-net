@@ -1,0 +1,148 @@
+{
+  "description": "CVP-016 session protocol, version 2. All byte strings are hex unless they sit inside JSON the protocol itself defines. seq(s, n) means the n bytes s, s+1, s+2, ... (mod 256). X25519, ML-KEM-768 and the chain KDF are as in cvp-016-v1.json.",
+  "transcript": {
+    "initiator": {
+      "account": "A",
+      "device": "A1",
+      "sign": "As",
+      "dh": "Ad"
+    },
+    "responder": {
+      "account": "B",
+      "device": "B1",
+      "sign": "Bs",
+      "dh": "Bd"
+    },
+    "x": {
+      "ek": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+      "ct": "AgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj9AQQ",
+      "signed": "s",
+      "pq": "p",
+      "oneTime": "o"
+    },
+    "prekeyPublicKeys": {
+      "signed": "AwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISI",
+      "pq": "BAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyAhIiMkJSYnKCkqKywtLi8wMTIzNDU2Nzg5Ojs8PT4_QEFCQw",
+      "oneTime": "BQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQ"
+    },
+    "object": {
+      "v": 2,
+      "initiator": {
+        "account": "A",
+        "device": "A1",
+        "sign": "As",
+        "dh": "Ad"
+      },
+      "responder": {
+        "account": "B",
+        "device": "B1",
+        "sign": "Bs",
+        "dh": "Bd"
+      },
+      "ek": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+      "ct": "h-rDuFUt8sXKI2G1EpxW2V3asEBcZNfGYeTwD6lPxso",
+      "signed": {
+        "id": "s",
+        "pub": "AwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISI"
+      },
+      "pq": {
+        "id": "p",
+        "pub": "4cY8tLPRZdxBOz1Wv5QVZuvioFc8J9yUEK_b8lhVccU"
+      },
+      "oneTime": {
+        "id": "o",
+        "pub": "BQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQ"
+      }
+    },
+    "canonical": "{\"ct\":\"h-rDuFUt8sXKI2G1EpxW2V3asEBcZNfGYeTwD6lPxso\",\"ek\":\"AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA\",\"initiator\":{\"account\":\"A\",\"device\":\"A1\",\"dh\":\"Ad\",\"sign\":\"As\"},\"oneTime\":{\"id\":\"o\",\"pub\":\"BQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQ\"},\"pq\":{\"id\":\"p\",\"pub\":\"4cY8tLPRZdxBOz1Wv5QVZuvioFc8J9yUEK_b8lhVccU\"},\"responder\":{\"account\":\"B\",\"device\":\"B1\",\"dh\":\"Bd\",\"sign\":\"Bs\"},\"signed\":{\"id\":\"s\",\"pub\":\"AwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8gISI\"},\"v\":2}",
+    "hash": "da2d08f23927de2976a2cfcff378d4b6d0b3d743325807571e6d3e8a7aefd696"
+  },
+  "handshake": {
+    "dh": [
+      "101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f",
+      "303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f",
+      "505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f",
+      "707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f"
+    ],
+    "mlkem": "909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+    "transcriptHash": "da2d08f23927de2976a2cfcff378d4b6d0b3d743325807571e6d3e8a7aefd696",
+    "rootKey": "90ce9d18c6f042515d60864be63712a412a17abe620a4d580fcad31b8c2d984c",
+    "initiatorHeaderKey": "0cf7c04ad2e1b32c4b9a45abe70a121a2535411b5fe8b2ed6f639b19d74cf159",
+    "responderNextHeaderKey": "b890b92aac81c841ed491b801cce7c21b3e1124c1ceb88d4aca7caadea38da63",
+    "threeDh": {
+      "rootKey": "2eebc6943861cf6ddcce13eef595c699ac91eef94aded1e2113455ccf345f5f7",
+      "initiatorHeaderKey": "7e507de95839ff0e6b3ad70bd2bfd1c246a7dc8c224a8963ebcdab6f33b202ac",
+      "responderNextHeaderKey": "4505414ba6b6183c2aa53f67cf0b0f2e3ee7f240a4ed0b9fcd2fea3cdb79269f"
+    }
+  },
+  "identityKey": {
+    "dh": [
+      "505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f",
+      "707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f"
+    ],
+    "mlkem": "909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeaf",
+    "x": {
+      "ek": "AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA",
+      "ct": "AgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj9AQQ",
+      "signed": "s",
+      "pq": "p",
+      "oneTime": "o"
+    },
+    "key": "ccc3b162ed78e3cdf096da500ddef9338e004b980a56cd44b5cd5160876a4a6f",
+    "iv": "7b2aa1caff6a8121702a2c30"
+  },
+  "root": {
+    "rootKey": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    "dh": "202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f",
+    "withoutMlkem": {
+      "rootKey": "af1d26a3603d1764268c0909b68468d9231eb0a9c8ca8058fb1416722ba11e43",
+      "chainKey": "7c6ccce9b2cd8af2a5f7574f689bb28817f1c05830399cfcf55c37b91a448554",
+      "nextHeaderKey": "4e4163a5349627605428d4516f963f8a0ddc6f2562f4aac0f2a766687011faef"
+    },
+    "mlkem": "404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f",
+    "withMlkem": {
+      "rootKey": "b16e86b76f9d7ed4f2567567bf8b12e4e4a4c265d39f88ae41b5fb6b89238040",
+      "chainKey": "2eb59b158b12d951e00a13d830820d1e91bfd9a28bd9a68aebedccafb36d49c2",
+      "nextHeaderKey": "1d12bb3738b9e65371a9158b9cc5f3b5eebf8ee5477c0d0ab8a11f637fbc7df5"
+    }
+  },
+  "message": {
+    "messageKey": "606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f",
+    "key": "eea2d3380f70c68e50831d38226debafce3f8d3e75e7bdb3ac1fcc466a333282",
+    "iv": "2b35836cc998397fb3bf7749"
+  },
+  "header": {
+    "object": {
+      "dh": "ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0A",
+      "n": 3,
+      "pn": 2,
+      "pe": 1,
+      "k": {
+        "e": 2,
+        "t": "ek",
+        "i": 0,
+        "d": "AAECAw"
+      }
+    },
+    "canonical": "{\"dh\":\"ISIjJCUmJygpKissLS4vMDEyMzQ1Njc4OTo7PD0-P0A\",\"k\":{\"d\":\"AAECAw\",\"e\":2,\"i\":0,\"t\":\"ek\"},\"n\":3,\"pe\":1,\"pn\":2}",
+    "note": "Encrypted with AES-256-GCM under the header key, a random 12-byte IV in front, the transcript hash as associated data."
+  },
+  "pieces": {
+    "chunk": 256,
+    "encapsulationKey": {
+      "bytes": 1184,
+      "pieces": 5,
+      "last": 160
+    },
+    "ciphertext": {
+      "bytes": 1088,
+      "pieces": 5,
+      "last": 64
+    }
+  },
+  "limits": {
+    "maxSkip": 1000,
+    "maxStored": 2000,
+    "skippedTtlMs": 604800000
+  }
+}

@@ -3,11 +3,11 @@
 | | |
 | --- | --- |
 | Status | Draft |
-| Version | 1 |
-| Feature | `cvp.delivery` (version 1) |
+| Version | 2 |
+| Feature | `cvp.delivery` (version 2) |
 | Depends on | CVP-005, CVP-015, CVP-016, CVP-017, CVP-018 |
 | Code | `src/social/delivery.js`, `src/social/site.js` (reference site), `src/social/client.js` (reference client) |
-| Proposed in | [SNIP-0005](../snips/SNIP-0005.md) |
+| Proposed in | [SNIP-0005](../snips/SNIP-0005.md); version 2 in [SNIP-0006](../snips/SNIP-0006.md) |
 
 ## Summary
 
@@ -158,6 +158,67 @@ Measured with the reference code, as JSON. Quantum-resistant signatures and keys
 | First direct envelope to a device (handshake, device list and actor document) | about 43 KB |
 | Later direct envelopes | about 10 KB |
 
+## Version 2
+
+Version 2 adds to version 1; every version 1 envelope stays valid. A site announces
+`cvp.delivery: 2`.
+
+### Version 2 direct envelopes
+
+```
+{ "v": 2, "mode": "direct", "device": <recipient device id>, "message": { "v": 2, "h", "c", "x"? } }
+```
+
+The message is a version 2 CVP-016 message. There is no session tag and MUST be no other member.
+The recipient device finds the session by trying its header keys. A site carrying it learns the
+recipient actor and device and the size; on a first message it also sees prekey ids, but not the
+sender.
+
+### Unsigned direct activities
+
+In a version 2 direct envelope, and nowhere else, the payload's `activity` MAY have no `sig`. A
+receiver MUST then check that its `actor` and `device` are the actor and device the session is
+with, that it is addressed only to actors, and the same vocabulary rules as a signed activity.
+It MUST refuse an unsigned activity that arrives any other way, and MUST NOT store or forward
+one as if it were signed.
+
+Senders SHOULD leave direct activities unsigned: the session already proves to the recipient
+who sent them, and a signature would let the recipient prove it to everyone else. The cost is
+that a recipient can't prove what they were sent, for example to a moderator; an app that needs
+that asks the sender to sign.
+
+### Sealed sending
+
+So far the sender's site learns who its actor writes to, and the recipient's site learns which
+site a message came from. Sealed sending removes both for people who have already spoken.
+
+- An actor has a **delivery token**: 32 random bytes. It gives the token to the people it talks
+  to as `delivery` in a direct payload (version 2 sessions only), and gives its own site the
+  **verifier** `base64url(SHA-256("secure-net/social/v2/delivery-token\n" || token))` through
+  the `delivery_token` endpoint (signed in, as itself). A site keeps at most two verifiers per
+  actor, so a token can be replaced without losing messages on the way.
+- A device holding a recipient's token MAY send version 2 direct and group envelopes to the
+  recipient's site's `sealed` endpoint: `{ "v": 1, "items": [{ "to", "envelope", "token" }] }`,
+  with no login and no site signature. The site MUST check each token against the recipient's
+  verifiers and MUST accept the request whole or not at all. It MUST NOT accept other envelopes
+  this way, and SHOULD limit rates per token and per network address.
+- A sender MUST NOT send sealed to a session the recipient hasn't answered yet: a first message
+  goes through the sender's site, which vouches for it. If a token is refused the sender falls
+  back to its site.
+
+What a site still learns from a sealed delivery: the recipient, the size, the time, and the
+network address it came from. Hiding the address needs a proxy or relay and is outside this
+part. Someone holding a token can send unwanted messages without their site being able to stop
+them; the recipient replaces the token and gives the new one only to the people it wants.
+
+### Group envelopes
+
+```
+{ "v": 2, "mode": "group", "group": "group:<id>", "message": <base64url MLS message> }
+```
+
+One MLS private message (CVP-022). A site learns the group id, the recipient and the size.
+
 ## Security and privacy
 
 What each party learns:
@@ -196,6 +257,9 @@ followers-only posts, a direct message, a like, an unfollow) through a network t
 everything. It then checks that no private text or activity type appears in what the network
 kept, and that the public posts do. Tests: `test/social.test.mjs`.
 
+Version 2: [`vectors/cvp-019-v2.json`](vectors/cvp-019-v2.json): reproduce the delivery-token
+verifier; judge every envelope and sealed body as stated. Tests: `test/social2.test.mjs`.
+
 The reference site keeps everything in memory and doesn't seal between sites; real sites MUST.
 
 ## Changes
@@ -203,3 +267,4 @@ The reference site keeps everything in memory and doesn't seal between sites; re
 | Version | Date | SNIP | Change |
 | --- | --- | --- | --- |
 | 1 | 2026-11-14 | SNIP-0005 | First version |
+| 2 | 2026-11-14 | SNIP-0006 | Version 2 direct envelopes (no session tag), unsigned direct activities, sealed sending, group envelopes |

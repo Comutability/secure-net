@@ -216,6 +216,9 @@ function pieceReceived(pq, k) {
   }
 }
 
+/** The derivations, for test vectors and other implementations. Not needed to use sessions. */
+export const derive = Object.freeze({ transcriptHash, handshakeKeys, kdfRoot2, messageKey, identityKey, split, pieces });
+
 /** Where the post-quantum exchange stands: the epoch in progress and how many have been mixed in. */
 export const pqStatus = (state) => ({ epoch: state.pq.e, mixed: state.mixed, role: state.pq.role });
 

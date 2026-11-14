@@ -1,6 +1,6 @@
 {
   "about": "The registries of the Commonveil Protocol (CVP-000, section 7). Normative. Changed only by a SNIP, in the same pull request as the part text and code. scripts/standards.mjs checks the reference code against this file and writes spec/REGISTRIES.md and the index in spec/README.md from it.",
-  "release": "0.5.0",
+  "release": "0.6.0",
   "partStatuses": [
     "Reserved",
     "Draft",
@@ -275,9 +275,9 @@
     },
     {
       "id": "CVP-016",
-      "title": "End-to-end sessions: post-quantum handshake, ratchet, devices, groups, new devices",
+      "title": "End-to-end sessions: post-quantum handshake, ratchet with encrypted headers, devices, sender keys, new devices",
       "status": "Draft",
-      "version": 1,
+      "version": 2,
       "doc": "CVP-016-sessions.md",
       "features": [
         "cvp.sessions"
@@ -289,7 +289,8 @@
         "src/session/"
       ],
       "vectors": [
-        "vectors/cvp-016-v1.json"
+        "vectors/cvp-016-v1.json",
+        "vectors/cvp-016-v2.json"
       ]
     },
     {
@@ -335,9 +336,9 @@
     },
     {
       "id": "CVP-019",
-      "title": "Delivery: public, direct and audience envelopes, end to end encrypted",
+      "title": "Delivery: public, direct, audience and group envelopes, end to end encrypted; sealed sending",
       "status": "Draft",
-      "version": 1,
+      "version": 2,
       "doc": "CVP-019-delivery.md",
       "features": [
         "cvp.delivery"
@@ -355,7 +356,8 @@
         "src/social/client.js"
       ],
       "vectors": [
-        "vectors/cvp-019-v1.json"
+        "vectors/cvp-019-v1.json",
+        "vectors/cvp-019-v2.json"
       ]
     },
     {
@@ -399,6 +401,27 @@
       "vectors": [
         "vectors/cvp-021-v1.json"
       ]
+    },
+    {
+      "id": "CVP-022",
+      "title": "Groups: Messaging Layer Security (RFC 9420) with a hybrid post-quantum suite",
+      "status": "Draft",
+      "version": 1,
+      "doc": "CVP-022-groups.md",
+      "features": [
+        "cvp.groups"
+      ],
+      "dependsOn": [
+        "CVP-002",
+        "CVP-016",
+        "CVP-017",
+        "CVP-018",
+        "CVP-019"
+      ],
+      "code": [
+        "src/groups/"
+      ],
+      "vectors": []
     }
   ],
   "features": [
@@ -428,9 +451,10 @@
     },
     {
       "name": "cvp.sessions",
-      "version": 1,
+      "version": 2,
       "part": "CVP-016",
-      "status": "active"
+      "status": "active",
+      "note": "2: bound prekeys, hidden sender, encrypted headers, sparse ML-KEM. Version 1 is deprecated from 0.6.0: still accepted, not started where the peer speaks 2"
     },
     {
       "name": "cvp.envelope",
@@ -488,8 +512,15 @@
     },
     {
       "name": "cvp.delivery",
-      "version": 1,
+      "version": 2,
       "part": "CVP-019",
+      "status": "active",
+      "note": "2: version 2 direct envelopes without a session tag, sealed sending, unsigned direct activities, group envelopes"
+    },
+    {
+      "name": "cvp.groups",
+      "version": 1,
+      "part": "CVP-022",
       "status": "active"
     },
     {
@@ -569,6 +600,11 @@
     {
       "name": "governance.motion",
       "part": "CVP-012",
+      "status": "active"
+    },
+    {
+      "name": "group.credential",
+      "part": "CVP-022",
       "status": "active"
     },
     {
@@ -966,6 +1002,36 @@
       "status": "active"
     },
     {
+      "label": "secure-net/session/v2/transcript",
+      "use": "version 2 handshake transcript hash",
+      "part": "CVP-016",
+      "status": "active"
+    },
+    {
+      "label": "secure-net/session/v2/handshake",
+      "use": "version 2 handshake HKDF info (followed by the transcript hash)",
+      "part": "CVP-016",
+      "status": "active"
+    },
+    {
+      "label": "secure-net/session/v2/identity",
+      "use": "HKDF info for the key that hides the initiator's identity in a first message",
+      "part": "CVP-016",
+      "status": "active"
+    },
+    {
+      "label": "secure-net/session/v2/root",
+      "use": "version 2 root chain HKDF info (96 bytes out: root key, chain key, next header key)",
+      "part": "CVP-016",
+      "status": "active"
+    },
+    {
+      "label": "secure-net/session/v2/message",
+      "use": "version 2 message key HKDF info",
+      "part": "CVP-016",
+      "status": "active"
+    },
+    {
       "label": "commonveil-request/v1",
       "use": "first line of a site request's signature base",
       "part": "CVP-005",
@@ -1118,6 +1184,12 @@
       "status": "active"
     },
     {
+      "label": "secure-net/social/v2/delivery-token",
+      "use": "delivery-token verifier a site stores (SHA-256 of this label, a newline and the 32-byte token)",
+      "part": "CVP-019",
+      "status": "active"
+    },
+    {
       "label": "secure-net/repo/v1/leaf",
       "use": "Merkle leaf hash prefix (followed by a newline and the record id)",
       "part": "CVP-020",
@@ -1236,6 +1308,21 @@
       "name": "lexicon",
       "path": "/cvp/v2/lexicon/{id}",
       "part": "CVP-021"
+    },
+    {
+      "name": "sealed",
+      "path": "/cvp/v2/sealed",
+      "part": "CVP-019"
+    },
+    {
+      "name": "delivery_token",
+      "path": "/cvp/v2/delivery-token",
+      "part": "CVP-019"
+    },
+    {
+      "name": "key_packages",
+      "path": "/cvp/v2/key-packages/{actor}/{device}",
+      "part": "CVP-022"
     }
   ],
   "headers": [
@@ -1371,6 +1458,19 @@
         "CVP-021"
       ],
       "for": "Federated social networking, end to end encrypted, with portable accounts and verifiable public data"
+    },
+    {
+      "name": "groups",
+      "title": "Groups",
+      "parts": [
+        "CVP-002",
+        "CVP-016",
+        "CVP-017",
+        "CVP-018",
+        "CVP-019",
+        "CVP-022"
+      ],
+      "for": "Apps with group conversations that lock out removed or compromised members (needs an MLS library)"
     }
   ],
   "actorTypes": [
@@ -1565,12 +1665,17 @@
     {
       "name": "direct",
       "part": "CVP-019",
-      "note": "CVP-016 session to one device"
+      "note": "CVP-016 session to one device; version 2 shows a site the recipient device only"
     },
     {
       "name": "audience",
       "part": "CVP-019",
       "note": "CVP-016 sender key, one ciphertext for an audience"
+    },
+    {
+      "name": "group",
+      "part": "CVP-019",
+      "note": "one MLS private message (CVP-022); a site sees the group id and sizes"
     }
   ],
   "lexiconFieldTypes": [
