@@ -24,6 +24,11 @@ which wins.
 | CVP-014 | Consent capsules | Draft | 1 | `cvp.consent` | `src/consent/capsule.js` |
 | [CVP-015](CVP-015-quantum-resistance.md) | Quantum resistance and the sealed relay | Draft | 1 | `cvp.sealed-relay`, `cvp.pq-signatures` | `src/wire/sealed.js`, `src/core/signed.js` |
 | [CVP-016](CVP-016-sessions.md) | End-to-end sessions: post-quantum handshake, ratchet, devices, groups, new devices | Draft | 1 | `cvp.sessions` | `src/session/` |
+| [CVP-017](CVP-017-actors.md) | Actors and discovery: self-certifying actor documents and handles | Draft | 1 | `cvp.actors` | `src/social/actor.js` |
+| [CVP-018](CVP-018-activities.md) | Activities and objects: the ActivityStreams vocabulary, signed on devices | Draft | 1 | `cvp.activities` | `src/social/vocabulary.js`, `src/social/activity.js` |
+| [CVP-019](CVP-019-delivery.md) | Delivery: public, direct and audience envelopes, end to end encrypted | Draft | 1 | `cvp.delivery` | `src/social/delivery.js`, `src/social/site.js`, `src/social/client.js` |
+| [CVP-020](CVP-020-repositories.md) | Repositories and sync: an actor's public activities as a signed, portable, verifiable set | Draft | 1 | `cvp.repos` | `src/social/repo.js` |
+| [CVP-021](CVP-021-lexicons.md) | Lexicons: new object types named by domain | Draft | 1 | `cvp.lexicons` | `src/social/lexicon.js` |
 
 **Documentation still to write:** CVP-001, CVP-003, CVP-004, CVP-005, CVP-008, CVP-014. These parts are implemented and tested, but so far the code is their only specification.
 <!-- index:end -->
