@@ -24,6 +24,16 @@ export const DEFAULT_ENDPOINTS = Object.freeze({
   actors: "/cvp/v1/actors/{name}/{room}",
   identity: "/.well-known/commonveil/identity",
   files: "/api/files",
+  // The social protocol (CVP-017, CVP-019)
+  actor: "/.well-known/commonveil/actor",
+  prekeys: "/cvp/v2/prekeys/{actor}/{device}",
+  deliver: "/cvp/v2/deliver",
+  outbox: "/cvp/v2/outbox",
+  mailbox: "/cvp/v2/mailbox",
+  public: "/cvp/v2/public/{actor}",
+  repo: "/cvp/v2/repo/{actor}",
+  changes: "/cvp/v2/changes",
+  lexicon: "/cvp/v2/lexicon/{id}",
 });
 
 const ENDPOINT_RE = /^\/[A-Za-z0-9._~{}\/-]{0,199}$/;

@@ -67,7 +67,7 @@ export async function checkStandards() {
     }
   };
   unique(reg.parts, "id", "Part");
-  for (const [name, key] of [["features", "name"], ["recordKinds", "name"], ["ledgerEvents", "name"], ["capabilities", "name"], ["extensionExecution", "name"], ["consentActions", "name"], ["voteMethods", "name"], ["suites", "name"], ["labels", "label"], ["identifiers", "name"], ["endpoints", "name"], ["headers", "name"], ["profiles", "name"]]) {
+  for (const [name, key] of [["features", "name"], ["recordKinds", "name"], ["ledgerEvents", "name"], ["capabilities", "name"], ["extensionExecution", "name"], ["consentActions", "name"], ["voteMethods", "name"], ["suites", "name"], ["labels", "label"], ["identifiers", "name"], ["endpoints", "name"], ["headers", "name"], ["profiles", "name"], ["actorTypes", "name"], ["activityTypes", "name"], ["objectTypes", "name"], ["addresses", "name"], ["envelopeModes", "name"], ["lexiconFieldTypes", "name"]]) {
     unique(reg[name], key, name);
     for (const e of reg[name]) {
       if (e.part && !parts.has(e.part)) bad(`${name} "${e[key]}" names unknown part ${e.part}`);
@@ -145,6 +145,14 @@ export async function checkStandards() {
   for (const [n, perms] of Object.entries(ext.EXECUTION)) if (!regExec[n] || !sameSet(perms, regExec[n])) bad(`Permissions for ${n} extensions differ from the registry`);
   if (!sameSet((await load("src/consent/capsule.js")).ACTIONS, reg.consentActions.map((a) => a.name))) bad("Consent actions differ from the registry");
   if (!sameSet((await load("src/governance/vote.js")).METHODS, reg.voteMethods.map((a) => a.name))) bad("Vote methods differ from the registry");
+
+  const vocab = await load("src/social/vocabulary.js");
+  const delivery = await load("src/social/delivery.js");
+  for (const [name, code, list] of [["Actor types", vocab.ACTOR_TYPES, reg.actorTypes], ["Activity types", vocab.ACTIVITY_TYPES, reg.activityTypes], ["Object types", vocab.OBJECT_TYPES, reg.objectTypes], ["Addresses", [vocab.PUBLIC, vocab.FOLLOWERS], reg.addresses], ["Envelope modes", delivery.MODES, reg.envelopeModes], ["Lexicon field types", (await load("src/social/lexicon.js")).FIELD_TYPES, reg.lexiconFieldTypes]]) {
+    const names = list.map((x) => x.name);
+    for (const n of diff(code, names)) bad(`${name}: "${n}" is in the code but not registered`);
+    for (const n of diff(names, code)) bad(`${name}: "${n}" is registered but not in the code`);
+  }
 
   for (const s of reg.suites) {
     const [file, name] = s.code.split(" ");
@@ -231,6 +239,22 @@ function generated(reg, warnings) {
     table(["Consent action", "Part"], reg.consentActions.map((a) => [code(a.name), L(a.part)])),
     "",
     table(["Vote method", "Part"], reg.voteMethods.map((a) => [code(a.name), L(a.part)])),
+    "",
+    "## Social vocabulary",
+    "",
+    "ActivityStreams 2.0 names (CVP-018), carried as plain canonical JSON rather than JSON-LD.",
+    "",
+    table(["Actor type", "Part", "ActivityStreams"], reg.actorTypes.map((t) => [code(t.name), L(t.part), t.as2])),
+    "",
+    table(["Activity type", "Part", "ActivityStreams"], reg.activityTypes.map((t) => [code(t.name), L(t.part), t.as2])),
+    "",
+    table(["Object type", "Part", "ActivityStreams"], reg.objectTypes.map((t) => [code(t.name), L(t.part), t.as2])),
+    "",
+    table(["Address", "Part", "ActivityStreams"], reg.addresses.map((t) => [code(t.name), L(t.part), t.as2])),
+    "",
+    table(["Envelope mode", "Part", "What a site can read"], reg.envelopeModes.map((t) => [code(t.name), L(t.part), t.note])),
+    "",
+    table(["Lexicon field type", "Part"], reg.lexiconFieldTypes.map((t) => [code(t.name), L(t.part)])),
     "",
     "## Algorithm suites",
     "",

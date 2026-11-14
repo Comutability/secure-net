@@ -16,3 +16,4 @@ jobs:
       - run: node scripts/vectors.mjs --check
       - run: node scripts/standards.mjs
       - run: node examples/two-party.mjs
+      - run: node examples/social.mjs
