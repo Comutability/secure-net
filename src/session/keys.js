@@ -100,14 +100,16 @@ function prekeyMaker(device, secrets) {
  * one-time X25519 and ML-KEM-768 prekeys. Every public prekey is signed by the device. Keep
  * `secrets` on the device; publish `published` to the site that holds your mailbox.
  */
-export function createPrekeys(device, { oneTime = 20, pqOneTime = 20, now = Date.now(), lifetime = SIGNED_PREKEY_LIFETIME } = {}) {
+export function createPrekeys(device, { oneTime = 20, pqOneTime = 20, now = Date.now(), lifetime = SIGNED_PREKEY_LIFETIME, sessions = 2 } = {}) {
   const secrets = {};
   const make = prekeyMaker(device, secrets);
   const expires = now + lifetime;
   return {
     secrets,
     published: {
-      signed: make("x25519", { expires }),
+      // `sessions` is the highest session version this device speaks. It is signed, so a site
+      // can't remove it to talk a sender down to an older version.
+      signed: make("x25519", { expires, ...(sessions > 1 ? { sessions } : {}) }),
       lastResort: make("ml-kem-768", { expires, lastResort: true }),
       oneTime: Array.from({ length: oneTime }, () => make("x25519", { oneTime: true })),
       pqOneTime: Array.from({ length: pqOneTime }, () => make("ml-kem-768", { oneTime: true })),
@@ -130,11 +132,11 @@ export function moreOneTimePrekeys(device, { oneTime = 20, pqOneTime = 20 } = {}
  * Rotate the signed prekey and the last-resort ML-KEM prekey (do this well before they expire).
  * Keep the old secrets for a while so messages already on their way can still be opened.
  */
-export function rotateSignedPrekeys(device, { now = Date.now(), lifetime = SIGNED_PREKEY_LIFETIME } = {}) {
+export function rotateSignedPrekeys(device, { now = Date.now(), lifetime = SIGNED_PREKEY_LIFETIME, sessions = 2 } = {}) {
   const secrets = {};
   const make = prekeyMaker(device, secrets);
   const expires = now + lifetime;
-  return { secrets, signed: make("x25519", { expires }), lastResort: make("ml-kem-768", { expires, lastResort: true }) };
+  return { secrets, signed: make("x25519", { expires, ...(sessions > 1 ? { sessions } : {}) }), lastResort: make("ml-kem-768", { expires, lastResort: true }) };
 }
 
 /**

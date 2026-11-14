@@ -18,7 +18,7 @@ import { takeBundle } from "../session/keys.js";
 import { SessionError } from "../session/primitives.js";
 import { verifyActorDocument, parseHandle } from "./actor.js";
 import { verifyActivity } from "./activity.js";
-import { deliveryBody, readDeliveryBody, envelopeProblems } from "./delivery.js";
+import { deliveryBody, readDeliveryBody, readSealedBody, deliveryVerifier, envelopeProblems } from "./delivery.js";
 import { verifyRepo } from "./repo.js";
 import { verifyLexicon } from "./lexicon.js";
 
@@ -61,6 +61,8 @@ export class ReferenceSite {
     this.changeLog = []; // { actor, head }: every repository commit this site has accepted, in order
     this.moved = new Map(); // actor id or handle name -> newer actor document on another site
     this.lexicons = new Map(); // NSID -> lexicon record
+    this.verifiers = new Map(); // actor id -> delivery-token verifiers it currently accepts
+    this.sealedLog = []; // what this site learned from each sealed delivery (for tests and the example)
   }
 
   /** The site document (CVP-005, CVP-008). */
@@ -169,6 +171,33 @@ export class ReferenceSite {
     const doc = this.actors.get(actorId);
     if (!doc?.body.devices.body.devices.some((d) => d.kid === device)) throw new SessionError("BAD_INPUT", "That device isn't on the actor's device list");
     this.prekeys.set(`${actorId}/${device}`, published);
+  }
+
+  /**
+   * PUT delivery-token: an actor (signed in to its own site) sets the verifiers of the delivery
+   * tokens it accepts, at most two so a token can be replaced without losing messages on the way.
+   */
+  setDeliveryVerifiers(actorId, verifiers) {
+    if (!this.actors.has(actorId)) throw new SessionError("UNTRUSTED", "Not a local actor");
+    if (!Array.isArray(verifiers) || verifiers.length > 2 || verifiers.some((v) => typeof v !== "string" || !/^[A-Za-z0-9_-]{43}$/.test(v))) throw new SessionError("BAD_INPUT", "Up to two verifiers");
+    this.verifiers.set(actorId, [...verifiers]);
+  }
+
+  /**
+   * POST sealed: version 2 direct envelopes from a device that doesn't say who it is (CVP-019,
+   * "Sealed sending"). There is no site signature and no account: the only thing checked is that
+   * each item carries a delivery token its recipient accepts. Accepted whole or not at all.
+   */
+  receiveSealed(body) {
+    const items = readSealedBody(body);
+    for (const it of items) {
+      const accepted = this.verifiers.get(it.to) || [];
+      if (!accepted.includes(deliveryVerifier(it.token))) throw new SessionError("UNTRUSTED", "That delivery token isn't accepted");
+    }
+    for (const it of items) {
+      this.sealedLog.push({ to: it.to, device: it.envelope.device, bytes: JSON.stringify(it.envelope).length });
+      this.#store({ to: it.to, envelope: it.envelope }, null);
+    }
   }
 
   /** Collect (and clear) an actor's mailbox. */
