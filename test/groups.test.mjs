@@ -257,3 +257,23 @@ test("groups end to end: a member can't post someone else's signed activity as a
   assert.deepEqual(shown.map((s) => s.reason), ["UNTRUSTED"]);
   assert.ok(!carol.timeline.some((t) => t.content === "not for the group"));
 });
+
+test("groups end to end: a post signed by someone who isn't a member is refused, even if a member seals it", async () => {
+  const { alice, bob, carol, settle } = await town();
+  const group = await alice.createGroup();
+  await alice.invite(group, bob.id);
+  await alice.invite(group, carol.id);
+  await settle();
+  await alice.removeFromGroup(group, carol.id);
+  await settle();
+  // Carol, removed, signs a post for the group; Bob, still a member, seals it in for her.
+  const hers = carol.sign({ type: "Create", to: [group], object: { type: "Note", content: "I'm still here", context: group } }, { encrypted: true });
+  const G2 = await import("../src/groups/mls.js");
+  const { canonicalJson } = await import("../src/core/canonical.js");
+  const r = await G2.seal(bob.groups.get(group), canonicalJson({ v: 1, activity: hers }));
+  bob.groups.set(group, r.state);
+  await bob.deliver(alice.id, [{ v: 2, mode: "group", group, message: r.message }]);
+  const shown = await alice.sync();
+  assert.deepEqual(shown.map((s) => s.reason), ["UNTRUSTED"]);
+  assert.ok(!alice.timeline.some((t) => t.content === "I'm still here"));
+});
