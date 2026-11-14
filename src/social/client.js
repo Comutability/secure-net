@@ -144,23 +144,39 @@ export class SocialClient {
     if (this.actorSent.get(actorId) !== this.actorRecord.body.seq) out.actor = this.actorRecord;
     // So does our delivery token, so they can write back without their site or ours learning who.
     if (all2 && this.token && !this.tokenSent.has(actorId)) out.delivery = this.token;
-    const sealedOk = all2 && this.tokens.has(actorId) && Object.values(sessions).every((st) => !st.pending);
+    // Sealed sending needs their token and sessions they have already answered: a first message
+    // goes through our site, which vouches for it (CVP-019, "Sealed sending").
+    const sealedOk = all2 && Object.values(sessions).every((st) => !st.pending);
     const { sessions: next, items } = await sealDirect(sessions, out);
     this.actorSent.set(actorId, this.actorRecord.body.seq);
     if (out.delivery) this.tokenSent.add(actorId);
     Object.assign(this.sessions, next);
-    if (sealedOk) {
-      // Sealed sending: straight to their site, with their token and without our name. Our own
-      // site isn't involved at all. If the token is refused (they replaced it), fall back.
+    return this.deliver(actorId, items.map((it) => it.envelope), { sealed: sealedOk });
+  }
+
+  /**
+   * Send envelopes that need no sender (version 2 direct, or group) to one actor: sealed, straight
+   * to their site, if we hold their delivery token; through our own site otherwise.
+   */
+  async deliver(actorId, envelopes, { sealed = true } = {}) {
+    const host = this.hostOf(actorId);
+    const token = this.tokens.get(actorId);
+    if (sealed && token) {
       try {
-        this.network.site(this.hostOf(actorId)).receiveSealed(this.network.record({ sealed: true, to: this.hostOf(actorId), body: sealedBody(items.map((it) => ({ ...it, token: this.tokens.get(actorId) }))) }).body);
-        return;
+        this.network.site(host).receiveSealed(this.network.record({ sealed: true, to: host, body: sealedBody(envelopes.map((envelope) => ({ to: actorId, envelope, token }))) }).body);
+        return "sealed";
       } catch (e) {
         if (e.code !== "UNTRUSTED") throw e;
         this.tokens.delete(actorId);
       }
     }
-    await this.site.send(this.id, items.map((it) => ({ ...it, host: this.hostOf(it.to) })));
+    await this.site.send(this.id, envelopes.map((envelope) => ({ host, to: actorId, envelope })));
+    return "site";
+  }
+
+  /** Process an activity that another module has already authenticated (groups). */
+  handleActivity(body, how) {
+    return this.#handle(body, how);
   }
 
   /** Replace our delivery token (to cut off someone who has it). People we talk to get the new one with our next message. */
@@ -285,6 +301,11 @@ export class SocialClient {
       const { view: next, activity } = await openAudience(view, env);
       this.views.set(key, next);
       return this.#handle(verifyActivity(activity, this.known.get(activity.body.actor), { encrypted: true }), "followers");
+    }
+    if (env.mode === "group") {
+      // Groups (CVP-022) live in their own module, which needs an MLS library: see groups/client.js.
+      if (!this.onGroupEnvelope) return { kind: "unreadable", reason: "this client doesn't do groups" };
+      return this.onGroupEnvelope(env);
     }
     // direct
     if (env.device !== this.device.kid) return null;

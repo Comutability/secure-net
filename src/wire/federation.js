@@ -42,6 +42,7 @@ export const SOCIAL_ENDPOINTS = Object.freeze({
   changes: "/cvp/v2/changes",
   lexicon: "/cvp/v2/lexicon/{id}",
   sealed: "/cvp/v2/sealed",
+  key_packages: "/cvp/v2/key-packages/{actor}/{device}",
   delivery_token: "/cvp/v2/delivery-token",
 });
 

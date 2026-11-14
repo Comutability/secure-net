@@ -221,3 +221,14 @@ test("v2: a version 1 session state is refused", async () => {
   const p = await pair();
   assert.equal(await code(v2.encrypt({ ...p.a, v: 1 }, "x")), "BAD_INPUT");
 });
+
+test("v2: a message too far ahead is refused", async () => {
+  const p = await pair();
+  let a = p.a;
+  let last;
+  for (let i = 0; i <= v2.MAX_SKIP + 1; i += 1) {
+    last = await v2.encrypt(a, "x");
+    a = last.state;
+  }
+  assert.equal(await code(v2.decrypt(p.b, last.message)), "TOO_FAR_AHEAD");
+});

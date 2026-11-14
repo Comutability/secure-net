@@ -61,6 +61,7 @@ export class ReferenceSite {
     this.changeLog = []; // { actor, head }: every repository commit this site has accepted, in order
     this.moved = new Map(); // actor id or handle name -> newer actor document on another site
     this.lexicons = new Map(); // NSID -> lexicon record
+    this.keyPackages = new Map(); // `${actor}/${device}` -> MLS key packages (CVP-022)
     this.verifiers = new Map(); // actor id -> delivery-token verifiers it currently accepts
     this.sealedLog = []; // what this site learned from each sealed delivery (for tests and the example)
   }
@@ -173,6 +174,21 @@ export class ReferenceSite {
     this.prekeys.set(`${actorId}/${device}`, published);
   }
 
+  /** PUT key-packages: MLS key packages (CVP-022) for a device, each handed out once; the last one is kept for when they run out. */
+  publishKeyPackages(actorId, device, list) {
+    const doc = this.actors.get(actorId);
+    if (!doc?.body.devices.body.devices.some((d) => d.kid === device)) throw new SessionError("BAD_INPUT", "That device isn't on the actor's device list");
+    if (!Array.isArray(list) || list.length === 0 || list.length > 100 || list.some((k) => typeof k !== "string")) throw new SessionError("BAD_INPUT", "1 to 100 key packages");
+    this.keyPackages.set(`${actorId}/${device}`, [...list]);
+  }
+
+  /** GET key-packages: one key package for a device. */
+  keyPackage(actorId, device) {
+    const list = this.keyPackages.get(`${actorId}/${device}`);
+    if (!list?.length) throw new SessionError("NOT_FOUND", "No key packages for that device");
+    return list.length > 1 ? list.shift() : list[0];
+  }
+
   /**
    * PUT delivery-token: an actor (signed in to its own site) sets the verifiers of the delivery
    * tokens it accepts, at most two so a token can be replaced without losing messages on the way.
@@ -195,7 +211,7 @@ export class ReferenceSite {
       if (!accepted.includes(deliveryVerifier(it.token))) throw new SessionError("UNTRUSTED", "That delivery token isn't accepted");
     }
     for (const it of items) {
-      this.sealedLog.push({ to: it.to, device: it.envelope.device, bytes: JSON.stringify(it.envelope).length });
+      this.sealedLog.push({ to: it.to, mode: it.envelope.mode, bytes: JSON.stringify(it.envelope).length });
       this.#store({ to: it.to, envelope: it.envelope }, null);
     }
   }

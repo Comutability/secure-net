@@ -52,5 +52,19 @@
     "@noble/hashes": "^2.4.0",
     "@noble/post-quantum": "0.7.1",
     "@scure/bip39": "^2.4.0"
+  },
+  "overrides": {
+    "ts-mls": {
+      "@noble/curves": "$@noble/curves",
+      "@noble/post-quantum": "$@noble/post-quantum",
+      "@noble/ciphers": "2.4.0",
+      "@hpke/chacha20poly1305": "1.8.0",
+      "@hpke/dhkem-x448": "1.8.0",
+      "@hpke/ml-kem": "0.3.0"
+    }
+  },
+  "devDependencies": {
+    "@hpke/hybridkem-x-wing": "^0.7.0",
+    "ts-mls": "^1.6.4"
   }
 }

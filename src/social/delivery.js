@@ -20,7 +20,7 @@ import { createSenderKey, distribution, acceptDistribution, groupEncrypt, groupD
 import { actorIdOf } from "./actor.js";
 import { ACTIVITY } from "./activity.js";
 import { ACTOR } from "./actor.js";
-import { isActorId, isObjectId, newId, ownerOf, PUBLIC } from "./vocabulary.js";
+import { isActorId, isObjectId, isGroupId, newId, ownerOf, PUBLIC } from "./vocabulary.js";
 
 export const MODES = Object.freeze(["public", "direct", "audience", "group"]);
 export const DELIVERY_LIMITS = Object.freeze({ items: 100, envelopeBytes: 512 * 1024, requestBytes: 4 * 1024 * 1024 });
@@ -68,7 +68,7 @@ function envelope2Problems(env) {
     else for (const k of Object.keys(m)) if (!["v", "h", "c", "x"].includes(k)) out.push(`Unexpected message field ${k}`);
   } else if (env.mode === "group") {
     allowed = ["v", "mode", "group", "message"];
-    if (!isObjectId(env.group)) out.push("A group envelope names its group");
+    if (!isGroupId(env.group)) out.push("A group envelope names its group");
     if (typeof env.message !== "string" || !B64U.test(env.message)) out.push("A group envelope carries one MLS message");
   } else return [`Version 2 has no ${env.mode} envelope`];
   for (const k of Object.keys(env)) if (!allowed.includes(k)) out.push(`Unexpected field ${k}: envelopes carry nothing else, so they leak nothing else`);
@@ -93,7 +93,7 @@ function decode(bytes) {
   }
   if (!p || p.v !== 1 || (p.activity === undefined && p.senderKeys === undefined && p.actor === undefined && p.delivery === undefined && p.groups === undefined)) throw new SessionError("BAD_MESSAGE", "Not a version 1 payload");
   if (p.delivery !== undefined && !(typeof p.delivery === "string" && TOKEN.test(p.delivery))) throw new SessionError("BAD_MESSAGE", "Bad delivery token");
-  if (p.groups !== undefined && !(Array.isArray(p.groups) && p.groups.length <= 20 && p.groups.every((g) => g && isObjectId(g.group) && typeof g.welcome === "string" && B64U.test(g.welcome)))) throw new SessionError("BAD_MESSAGE", "Bad group welcomes");
+  if (p.groups !== undefined && !(Array.isArray(p.groups) && p.groups.length <= 20 && p.groups.every((g) => g && isGroupId(g.group) && typeof g.welcome === "string" && B64U.test(g.welcome) && (g.actors === undefined || (Array.isArray(g.actors) && g.actors.length <= 1000 && g.actors.every((a) => a?.kind === ACTOR)))))) throw new SessionError("BAD_MESSAGE", "Bad group welcomes");
   if (p.actor !== undefined && p.actor?.kind !== ACTOR) throw new SessionError("BAD_MESSAGE", "Payload actor isn't an actor document");
   if (p.activity !== undefined && p.activity?.kind !== ACTIVITY) throw new SessionError("BAD_MESSAGE", "Payload activity isn't a signed activity");
   if (p.senderKeys !== undefined && !Array.isArray(p.senderKeys)) throw new SessionError("BAD_MESSAGE", "Bad sender keys");
@@ -179,7 +179,7 @@ export const deliveryVerifier = (token) => {
 };
 
 /**
- * The body of a sealed delivery: version 2 direct envelopes handed straight to the recipient's
+ * The body of a sealed delivery: version 2 direct or group envelopes handed straight to the recipient's
  * site by a device that doesn't say who it is. Each item carries the recipient's delivery token.
  */
 export function sealedBody(items) {
@@ -192,7 +192,7 @@ export function readSealedBody(body, code = "BAD_MESSAGE") {
   if (!body || body.v !== 1 || !Array.isArray(body.items) || body.items.length === 0 || body.items.length > DELIVERY_LIMITS.items) throw new SessionError(code, "Not a version 1 sealed delivery");
   for (const it of body.items) {
     if (!isActorId(it?.to) || !TOKEN.test(it.token || "")) throw new SessionError(code, "Each item names the recipient actor and carries its delivery token");
-    if (it.envelope?.v !== 2 || it.envelope.mode !== "direct") throw new SessionError(code, "Only version 2 direct envelopes may be sent sealed");
+    if (it.envelope?.v !== 2) throw new SessionError(code, "Only version 2 direct and group envelopes may be sent sealed");
     const p = envelopeProblems(it.envelope);
     if (p.length) throw new SessionError(code, p.join("; "));
     for (const k of Object.keys(it)) if (!["to", "envelope", "token"].includes(k)) throw new SessionError(code, `Unexpected field ${k}`);
