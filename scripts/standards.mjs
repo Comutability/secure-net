@@ -163,8 +163,10 @@ export async function checkStandards() {
   if (!reg.identifiers.some((i) => i.name === fed.PROTOCOL)) bad(`Protocol identifier ${fed.PROTOCOL} isn't registered`);
   const regPaths = Object.fromEntries(reg.endpoints.map((e) => [e.name, e.path]));
   if (regPaths["site-document"] !== fed.SITE_DOCUMENT) bad("The site document path differs from the registry");
-  for (const [n, p] of Object.entries(fed.DEFAULT_ENDPOINTS)) if (regPaths[n] !== p) bad(`Endpoint ${n} (${p}) isn't registered at that path`);
-  for (const n of diff(Object.keys(regPaths), ["site-document", ...Object.keys(fed.DEFAULT_ENDPOINTS)])) bad(`Endpoint ${n} is registered but the code doesn't define it`);
+  const codeEndpoints = { ...fed.DEFAULT_ENDPOINTS, ...fed.SOCIAL_ENDPOINTS };
+  for (const n of Object.keys(fed.SOCIAL_ENDPOINTS)) if (n in fed.DEFAULT_ENDPOINTS) bad(`Endpoint ${n} is in both endpoint lists`);
+  for (const [n, p] of Object.entries(codeEndpoints)) if (regPaths[n] !== p) bad(`Endpoint ${n} (${p}) isn't registered at that path`);
+  for (const n of diff(Object.keys(regPaths), ["site-document", ...Object.keys(codeEndpoints)])) bad(`Endpoint ${n} is registered but the code doesn't define it`);
 
   // Labels: everything written in the code, and every purpose session/primitives derives under.
   const session = await load("src/session/primitives.js");

@@ -12,7 +12,7 @@
 import { ed25519 } from "@noble/curves/ed25519.js";
 import { b64u } from "../core/bytes.js";
 import { canonicalJson } from "../core/canonical.js";
-import { signRequest, verifyRequest, digestOf, freshEnough, DEFAULT_ENDPOINTS, normHost } from "../wire/federation.js";
+import { signRequest, verifyRequest, digestOf, freshEnough, DEFAULT_ENDPOINTS, SOCIAL_ENDPOINTS, normHost } from "../wire/federation.js";
 import { describeSite } from "../wire/features.js";
 import { takeBundle } from "../session/keys.js";
 import { SessionError } from "../session/primitives.js";
@@ -65,7 +65,7 @@ export class ReferenceSite {
 
   /** The site document (CVP-005, CVP-008). */
   document() {
-    return { ...describeSite(), host: this.host, public_key: this.key.publicKey, endpoints: DEFAULT_ENDPOINTS };
+    return { ...describeSite(), host: this.host, public_key: this.key.publicKey, endpoints: { ...DEFAULT_ENDPOINTS, ...SOCIAL_ENDPOINTS } };
   }
 
   // ---- Discovery and keys (anyone may call) ----
@@ -203,7 +203,7 @@ export class ReferenceSite {
 
   async #deliver(host, items) {
     const text = canonicalJson(deliveryBody(items));
-    const fields = { method: "POST", to: host, path: DEFAULT_ENDPOINTS.deliver, from: this.host, date: new Date().toUTCString(), nonce: randomNonce(), digest: digestOf(text) };
+    const fields = { method: "POST", to: host, path: SOCIAL_ENDPOINTS.deliver, from: this.host, date: new Date().toUTCString(), nonce: randomNonce(), digest: digestOf(text) };
     const request = { ...fields, signature: signRequest(fields, this.key.secretKey), body: text };
     await this.network.site(host).receive(this.network.record(request));
   }
@@ -213,7 +213,7 @@ export class ReferenceSite {
   /** POST deliver: a signed delivery from another site (CVP-019, "Site to site"). */
   async receive(request) {
     const { body, signature, ...fields } = request;
-    if (fields.to !== this.host || fields.path !== DEFAULT_ENDPOINTS.deliver || fields.method !== "POST") throw new SessionError("BAD_REQUEST", "Not a delivery for this site");
+    if (fields.to !== this.host || fields.path !== SOCIAL_ENDPOINTS.deliver || fields.method !== "POST") throw new SessionError("BAD_REQUEST", "Not a delivery for this site");
     if (!freshEnough(fields.date)) throw new SessionError("BAD_TIME", "Request is too old or from the future");
     if (this.seenNonces.has(`${fields.from}/${fields.nonce}`)) throw new SessionError("REPLAY", "Request already received");
     if (digestOf(body) !== fields.digest) throw new SessionError("BAD_REQUEST", "Body doesn't match its digest");

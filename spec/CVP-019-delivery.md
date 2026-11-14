@@ -116,6 +116,10 @@ It offers them:
   deletes an envelope once every device it was for has collected it, or after 30 days.
 - **Actor and prekeys**: publishing the actor document and each device's prekeys (CVP-017).
 
+A site lists the endpoints in this part and in CVP-017, CVP-020 and CVP-021 in its site document
+only once it serves them, together with the matching features. A site that announces neither is
+simply not reachable by this protocol yet.
+
 ### 5. Site to site
 
 A site delivers to another site with `POST <deliver>` (default `/cvp/v2/deliver`). The body is

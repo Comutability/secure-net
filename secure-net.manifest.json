@@ -47,11 +47,11 @@
     "src/social/index.js": "cJmJMJus3GDGuyMz866pTLcc8k9JzeKOTkStW9cpoWk",
     "src/social/lexicon.js": "mDQB4RjhN4W5dT-F8rnsUjUWaRwN3j8DHIhapfXcziU",
     "src/social/repo.js": "r88OrAoTvc32gmTjCKe-tvKaiGtCD4IvvZWReNPYMdM",
-    "src/social/site.js": "CejIl9QTiQsqwWeVGhv5NMEHNIqZI-WqZczqhxQ_xQI",
+    "src/social/site.js": "zMdEKTQ71RcmnQtr5UarsPIzzTuhJjblptN9l9l0F5o",
     "src/social/vocabulary.js": "eq8WhyAKuNrhiX7U7LkhuudWjnybYmenx9sW_9aHWdM",
     "src/tokens/voprf.js": "WrwBmXPvGNpBghXJf3llQDxXuo-RybkqGYBdEUw53zI",
     "src/wire/features.js": "N8Wzf2sQF8KjpprvSzf6tOmHxfs1et6qNEQSAlrIeP8",
-    "src/wire/federation.js": "_PW0LW_3sIT0OUJzWYbe4J4CtZmFTSdAF28N_xPKw-Y",
+    "src/wire/federation.js": "YYDRfWwB-LI0BUoCWJYKrM40KOQurCmzobzwaXgGFZo",
     "src/wire/sealed.js": "Teu_LQT-V0zoZURAaMx2vSOWMKDb37Vi4eO9CTRAiKs",
     "spec/CVP-000-framework.md": "Mi4E0cfCF_ejNeqSgTikJ--w6cbSTI24r1TfbjPZiG4",
     "spec/CVP-002-signed-records.md": "J5HUocURKHxN2XvX9ALA6T-pNnT6O_hD4T9FAbnH5c8",
@@ -63,7 +63,7 @@
     "spec/CVP-016-sessions.md": "3Au1xrJE8XtgLHuHNRHRhkOkfNfFm27wtyStQvkrvdI",
     "spec/CVP-017-actors.md": "yXGXH-oMYP91v1EQR-eQ4l-O5mSFlaMCmLG498n9oZs",
     "spec/CVP-018-activities.md": "fwtkH9xGu-vs9_OydecOws8ZV-0oyEiDHkn6E4mu7R0",
-    "spec/CVP-019-delivery.md": "WhTlp-3nE2m7YzG2qB-zJaV17vWFrsI5sIs6OMjPq1s",
+    "spec/CVP-019-delivery.md": "nViRyk6r0zvtI22nWMhpcWRTexd-ZM7WPJRKxtKXfOU",
     "spec/CVP-020-repositories.md": "WX4Xpe6p6IsYx4qZgzLdkoAZF6f2I2LhLzIPFvLKc-c",
     "spec/CVP-021-lexicons.md": "FVc3TBoRkE171T-8P-sF3vVW9KHCwtK0yMITtMQYOY4",
     "spec/INTEROPERABILITY.md": "hwXV9LCK_eadojF4_EK0Wd_KBM5LoPIaFCNNEpYuIT8",
@@ -90,7 +90,7 @@
     "examples/social.mjs": "-1SvqTvGRlGQtEchoT9NSj90LojoFmN8ahib4-MTqeA",
     "examples/two-party.mjs": "myGpqy5N7j8PRGquI1I6SDZ7hJ6E6q5X-SWfyfdux2M",
     "scripts/vectors.mjs": "gNWa1aMLUmLuaES5k1AeWXDJttqVo6DRNhZbZs07Etw",
-    "scripts/standards.mjs": "fD7HeubB-eNFsOnFOpQAGZ5mzhaNx7-y6SPOyoAtDEM",
+    "scripts/standards.mjs": "5HNavbeCsb8eQRMxtNPjqfZHCBM4sgvHXhQilwLxYB0",
     "secure-net-conformance.json": "Eom4I-8XC8EQhMAfvua_K5C140vGJcaJ9Llbz1_VJII"
   }
 }
