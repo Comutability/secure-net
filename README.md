@@ -13,6 +13,7 @@ Deno, and needs no particular backend, database or host.
 | Module | What it does | Spec |
 | --- | --- | --- |
 | `session/*` | **End-to-end messaging, post-quantum.** A handshake and double ratchet built on X25519 and ML-KEM-768 together, Ed25519 + ML-DSA-65 keys, several devices per person, groups, and moving history to a new device. Draft: awaiting human cryptographic review. | CVP-016 |
+| `social/*` | **A federated social protocol, end to end encrypted.** ActivityPub's vocabulary (actors, Create, Follow, Like) and the AT Protocol's portability (key-based identity, moving between sites, signed repositories, lexicons), with followers-only posts, groups and direct messages sealed on devices and quantum-resistant throughout. Draft: awaiting human review. | CVP-017 to CVP-021 |
 | `core/canonical`, `core/signed` | One byte-exact encoding for everything signed, and the signed-record envelope every other module uses. | CVP-002 |
 | `crypto/*` | Account key chains, device certificates, end-to-end envelopes, post-quantum hybrid sealing, recovery phrases, community keys. The same code Commonveil runs. | CVP-001, CVP-003 |
 | `wire/federation`, `wire/features` | How sites sign requests to each other, which addresses they may connect to, and how two sites agree on features. | CVP-005, CVP-008 |
@@ -62,6 +63,10 @@ const r = await s.respond({ me: { device, deviceList, prekeys }, message, accoun
 ```
 
 Show people `s.safetyNumber(theirs, yours)` to compare, and warn when an account key changes.
+
+The social protocol, with two sites, follows, followers-only posts, a verifiable repository, a
+new object type and a move between sites, is [`examples/social.mjs`](examples/social.mjs)
+(`npm run example:social`).
 
 ## Working on it
 

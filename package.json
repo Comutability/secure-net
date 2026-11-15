@@ -1,6 +1,6 @@
 {
   "name": "@comutability/secure-net",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Secure Net: the Commonveil Protocol. Private, end-to-end encrypted, federated communication that any app or site can use.",
   "type": "module",
   "license": "AGPL-3.0-only",
@@ -22,6 +22,8 @@
     "./extensions/*": "./src/extensions/*.js",
     "./session": "./src/session/index.js",
     "./session/*": "./src/session/*.js",
+    "./social": "./src/social/index.js",
+    "./social/*": "./src/social/*.js",
     "./package.json": "./package.json"
   },
   "files": [
@@ -42,6 +44,7 @@
     "vectors": "node scripts/vectors.mjs",
     "standards": "node scripts/standards.mjs",
     "example": "node examples/two-party.mjs",
+    "example:social": "node examples/social.mjs",
     "manifest": "node scripts/manifest.mjs"
   },
   "dependencies": {
