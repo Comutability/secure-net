@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<title>Secure Net: what it is, how it is built, how it works and how to use it</title>
+<meta name="author" content="Comutability">
+<meta name="description" content="A guide to the Secure Net protocol for technical and non-technical readers.">
+<style>
+@page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+:root { --navy:#101A25; --ink:#1B2937; --muted:#4C5C6A; --line:#D5DCE1; --paper:#F7F8F5; --mint:#42D9BA; --mint-ink:#0A6B5B; --mint-tint:#E3F5EF; --peach:#F2B58D; --peach-ink:#9A4A20; --peach-tint:#FCEFE5; }
+* { box-sizing: border-box; }
+html { font-family: Inter, "Helvetica Neue", Arial, sans-serif; font-size: 10.4pt; line-height: 1.5; color: var(--navy); }
+body { margin: 0; }
+h1, h2, h3 { line-height: 1.15; letter-spacing: -0.015em; margin: 0; }
+h1 { font-size: 30pt; font-weight: 750; }
+h2 { font-size: 18pt; font-weight: 720; margin-top: 11mm; padding-top: 5mm; border-top: 0.6mm solid var(--navy); break-after: avoid; }
+h2.page { break-before: page; margin-top: 0; border-top: 0; padding-top: 2mm; }
+h2 + .lede { break-before: avoid; }
+h2 .n { color: var(--mint-ink); font-weight: 600; margin-right: 2mm; }
+h3 { font-size: 12pt; font-weight: 700; margin-top: 6mm; break-after: avoid; }
+h3 + p, h3 + ul, h3 + ol, h3 + pre, p + pre { break-before: avoid; }
+li { break-inside: avoid; }
+p { margin: 2.6mm 0 0; }
+ul, ol { margin: 2.6mm 0 0; padding-left: 5.5mm; }
+li { margin-top: 1.2mm; }
+a { color: var(--mint-ink); text-decoration: underline; text-underline-offset: 0.15em; }
+code, pre { font-family: "DejaVu Sans Mono", Menlo, Consolas, monospace; font-size: 8.4pt; }
+code { background: #EEF1EC; padding: 0.2mm 1mm; border-radius: 1mm; }
+pre { background: var(--navy); color: #E8EEF2; padding: 3.5mm 4mm; border-radius: 2mm; margin: 3mm 0 0; white-space: pre-wrap; line-height: 1.45; break-inside: avoid; }
+pre code { background: none; padding: 0; color: inherit; }
+pre .c { color: #8FA3B3; }
+table { border-collapse: collapse; width: 100%; margin-top: 3.5mm; font-size: 9.2pt; }
+tr { break-inside: avoid; }
+thead { display: table-header-group; }
+th, td { text-align: left; vertical-align: top; padding: 1.8mm 2.2mm; border-bottom: 0.3mm solid var(--line); }
+thead th { background: #EEF1EC; font-weight: 700; border-bottom: 0.4mm solid #B9C6D1; }
+tbody th { font-weight: 650; }
+figure { margin: 5mm 0 0; break-inside: avoid; }
+figure svg { display: block; width: 100%; height: auto; }
+figcaption { font-size: 8.8pt; color: var(--muted); margin-top: 1.5mm; }
+.lede { font-size: 12.4pt; line-height: 1.45; color: var(--ink); }
+.plain, .tech, .note, .draft { border-radius: 2mm; padding: 3mm 4mm; margin-top: 4mm; break-inside: avoid; }
+.plain { background: var(--mint-tint); border-left: 1.2mm solid var(--mint); }
+.tech { background: #EEF1EC; border-left: 1.2mm solid #77899A; }
+.note { background: var(--peach-tint); border-left: 1.2mm solid var(--peach); }
+.draft { border: 0.5mm dashed #77899A; }
+.plain > strong:first-child, .tech > strong:first-child, .note > strong:first-child, .draft > strong:first-child { display: block; font-size: 8.6pt; letter-spacing: 0.02em; margin-bottom: 0.6mm; }
+.plain > strong:first-child { color: var(--mint-ink); }
+.note > strong:first-child { color: var(--peach-ink); }
+.tech > strong:first-child, .draft > strong:first-child { color: var(--muted); }
+.tag { display: inline-block; font-size: 7.8pt; font-weight: 700; padding: 0.3mm 2mm; border-radius: 3mm; border: 0.3mm solid; vertical-align: 0.15em; white-space: nowrap; }
+.tag.in { color: var(--mint-ink); border-color: var(--mint-ink); background: var(--mint-tint); }
+.tag.prop { color: var(--peach-ink); border-color: var(--peach-ink); background: var(--peach-tint); border-style: dashed; }
+.cover { height: 250mm; display: flex; flex-direction: column; justify-content: space-between; }
+.cover .band { background: var(--navy); color: #F7F8F5; border-radius: 4mm; padding: 14mm 12mm; }
+.cover .band p { color: #B9C6D1; font-size: 13pt; max-width: 120mm; margin-top: 6mm; }
+.cover .brand { display: flex; align-items: center; gap: 3mm; font-weight: 650; font-size: 13pt; margin-bottom: 16mm; }
+.cover dl { display: grid; grid-template-columns: 34mm 1fr; gap: 1.5mm 4mm; margin: 0; font-size: 9.6pt; }
+.cover dt { color: var(--muted); }
+.cover dd { margin: 0; }
+.toc { columns: 2; column-gap: 10mm; margin-top: 4mm; padding: 0; list-style: none; }
+.toc li { break-inside: avoid; margin-top: 1.6mm; }
+.toc .n { display: inline-block; width: 7mm; color: var(--mint-ink); font-weight: 700; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; }
+.small { font-size: 8.8pt; color: var(--muted); break-before: avoid; }
+table.tight { font-size: 8.7pt; margin-top: 2.5mm; }
+table.tight th, table.tight td { padding: 1.2mm 2mm; }
+svg text { font-family: Inter, Arial, sans-serif; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="band">
+    <div class="brand">
+      <svg width="42" height="42" viewBox="0 0 64 64" role="img" aria-label="Comutability"><rect width="64" height="64" rx="14" fill="#1B2937"/><path d="M42.5 22.5a14 14 0 1 0 0 19" fill="none" stroke="#42D9BA" stroke-width="7" stroke-linecap="round"/><circle cx="44" cy="32" r="4.5" fill="#F2B58D"/></svg>
+      Comutability
+    </div>
+    <h1>Secure Net</h1>
+    <p>What the protocol is, how it is built, how it works and how to use it. Written for people who build software and for people who don't.</p>
+  </div>
+  <div>
+    <div class="note"><strong>Read this first</strong>
+      Secure Net is early software. It has not been independently security-audited, its newest parts have not been examined by a human cryptographer, and no packaged release has been made. Do not rely on it where your safety depends on it. This guide describes the design honestly, including what is unfinished.
+    </div>
+    <dl style="margin-top:8mm">
+      <dt>This edition</dt><dd>15 November 2026</dd>
+      <dt>Describes</dt><dd>Secure Net 0.4.0 (the main branch), plus proposals under review, each marked <span class="tag prop">Proposed</span></dd>
+      <dt>Source of truth</dt><dd><a href="https://github.com/Comutability/secure-net">github.com/Comutability/secure-net</a>. Where this guide and the repository differ, the repository is right.</dd>
+      <dt>Written by</dt><dd>Prepared with an AI assistant (Claude) at the founder's request. Michael J Burgess is responsible for it.</dd>
+      <dt>Licence</dt><dd>The protocol's code and specification are AGPL-3.0-only.</dd>
+      <dt>Contact</dt><dd><a href="mailto:contact@comutability.org">contact@comutability.org</a> · <a href="https://comutability.org">comutability.org</a></dd>
+    </dl>
+  </div>
+</section>
+
+<h2 class="page">Contents</h2>
+<ol class="toc">
+  <li><span class="n">1</span>Secure Net in one page</li>
+  <li><span class="n">2</span>The three rules it rests on</li>
+  <li><span class="n">3</span>Keys: who you are</li>
+  <li><span class="n">4</span>One exact encoding, and signed records</li>
+  <li><span class="n">5</span>Sites talking to each other</li>
+  <li><span class="n">6</span>How one message travels</li>
+  <li><span class="n">7</span>Sessions: agreeing and changing keys</li>
+  <li><span class="n">8</span>Communities that outlive their host</li>
+  <li><span class="n">9</span>Debates, votes and private tokens</li>
+  <li><span class="n">10</span>Resisting a quantum computer</li>
+  <li><span class="n">11</span>What each party can still see</li>
+  <li><span class="n">12</span>Proposed: the social protocol, sessions version 2 and groups</li>
+  <li><span class="n">13</span>How to use it</li>
+  <li><span class="n">14</span>How the protocol changes</li>
+  <li><span class="n">15</span>Limits, and what is not done</li>
+  <li><span class="n">16</span>Glossary and where to find things</li>
+</ol>
+<h3>How to read this guide</h3>
+<p>Each section starts in plain words. Boxes like these carry the two other voices:</p>
+<div class="two">
+  <div class="plain"><strong>In plain words</strong>The idea, without jargon. If you only read these, you will still understand what Secure Net does and what it does not.</div>
+  <div class="tech"><strong>For builders</strong>The exact construction: algorithms, byte formats and the part of the specification (<code>CVP-nnn</code>) to read next.</div>
+</div>
+<p>Two labels say how settled something is. <span class="tag in">In the protocol</span> means it is in the main branch with reference code and tests. <span class="tag prop">Proposed</span> means it is an open pull request: written and tested, but not accepted. Neither label means "reviewed" or "safe".</p>
+
+<h2 class="page"><span class="n">1</span>Secure Net in one page</h2>
+<p class="lede">Secure Net is a set of rules that lets people talk privately across websites run by different people, so that no single company owns the conversation and the websites carrying it cannot read it.</p>
+<div class="plain"><strong>In plain words</strong>
+  Think of the post. You write a letter, seal it, and hand it to a postal service. Any honest postal service can carry it, and you can switch to another one. Secure Net is the agreement about envelopes, addresses and seals. The "postal services" are websites that anyone can run. The seal is made on your own phone or computer, and only the people you wrote to can break it.
+</div>
+<figure>
+<svg viewBox="0 0 760 300" role="img" aria-label="Two people on two different sites. Messages are sealed on each person's device; the sites only carry sealed messages between each other.">
+  <rect x="0" y="0" width="760" height="300" rx="10" fill="#F7F8F5"/>
+  <g font-size="13" fill="#101A25">
+    <rect x="20" y="70" width="150" height="160" rx="10" fill="#fff" stroke="#77899A"/>
+    <text x="95" y="96" text-anchor="middle" font-weight="700">Ann's devices</text>
+    <rect x="45" y="112" width="100" height="40" rx="6" fill="#E3F5EF" stroke="#13957C"/><text x="95" y="137" text-anchor="middle">phone</text>
+    <rect x="45" y="164" width="100" height="40" rx="6" fill="#E3F5EF" stroke="#13957C"/><text x="95" y="189" text-anchor="middle">laptop</text>
+    <rect x="590" y="70" width="150" height="160" rx="10" fill="#fff" stroke="#77899A"/>
+    <text x="665" y="96" text-anchor="middle" font-weight="700">Ben's devices</text>
+    <rect x="615" y="112" width="100" height="40" rx="6" fill="#E3F5EF" stroke="#13957C"/><text x="665" y="137" text-anchor="middle">phone</text>
+    <rect x="615" y="164" width="100" height="40" rx="6" fill="#E3F5EF" stroke="#13957C"/><text x="665" y="189" text-anchor="middle">tablet</text>
+    <rect x="235" y="95" width="120" height="110" rx="10" fill="#101A25"/><text x="295" y="140" text-anchor="middle" fill="#F7F8F5" font-weight="700">a.example</text><text x="295" y="160" text-anchor="middle" fill="#B9C6D1" font-size="11">Ann's site</text><text x="295" y="180" text-anchor="middle" fill="#B9C6D1" font-size="11">carries, can't read</text>
+    <rect x="405" y="95" width="120" height="110" rx="10" fill="#101A25"/><text x="465" y="140" text-anchor="middle" fill="#F7F8F5" font-weight="700">b.example</text><text x="465" y="160" text-anchor="middle" fill="#B9C6D1" font-size="11">Ben's site</text><text x="465" y="180" text-anchor="middle" fill="#B9C6D1" font-size="11">carries, can't read</text>
+  </g>
+  <g stroke="#13957C" stroke-width="3" fill="none" marker-end="url(#a1)">
+    <path d="M172 150 H230"/><path d="M357 150 H400"/><path d="M527 150 H585"/>
+  </g>
+  <defs><marker id="a1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#13957C"/></marker></defs>
+  <g font-size="11" fill="#4C5C6A" text-anchor="middle">
+    <text x="201" y="140">sealed</text><text x="379" y="140">sealed</text><text x="556" y="140">sealed</text>
+    <text x="95" y="252">sealed and signed here</text><text x="665" y="252">checked and opened here</text>
+    <text x="380" y="40" font-size="13" fill="#101A25" font-weight="700">Sites carry. Keys decide.</text>
+    <text x="380" y="58">Different people run each site. Neither can read the message or pretend to be Ann or Ben.</text>
+  </g>
+</svg>
+<figcaption>Figure 1. The shape of everything in Secure Net: sealing and checking happen on people's own devices, and sites only carry.</figcaption>
+</figure>
+<h3>What it covers</h3>
+<table>
+  <thead><tr><th style="width:34%">Area</th><th>What it gives you</th><th style="width:19%">Status</th></tr></thead>
+  <tbody>
+    <tr><th>Identity</th><td>An account is a chain of keys you hold. A site cannot pretend to be you.</td><td><span class="tag in">In the protocol</span></td></tr>
+    <tr><th>End-to-end messages</th><td>Sealed on your device for the devices you are writing to, with keys that keep changing.</td><td><span class="tag in">In the protocol</span></td></tr>
+    <tr><th>Sites that talk to each other</th><td>Anyone can run a site; sites prove which site they are, and what they pass each other is sealed.</td><td><span class="tag in">In the protocol</span></td></tr>
+    <tr><th>Communities</th><td>A signed history that approved sites copy, so a community survives its host going away.</td><td><span class="tag in">In the protocol</span></td></tr>
+    <tr><th>Decisions</th><td>Proposals, structured debates, public and secret ballots that members can recount.</td><td><span class="tag in">In the protocol</span></td></tr>
+    <tr><th>Consent and extensions</th><td>Time-limited permissions you can withdraw; a way for sites to agree on features.</td><td><span class="tag in">In the protocol</span></td></tr>
+    <tr><th>Social protocol</th><td>Posts, follows and profiles that move with you between sites.</td><td><span class="tag prop">Proposed</span></td></tr>
+    <tr><th>Sessions version 2, sealed sending, groups</th><td>Hides who is writing to whom from sites; groups that lock out a removed member at once.</td><td><span class="tag prop">Proposed</span></td></tr>
+  </tbody>
+</table>
+<p>One application uses Secure Net so far: <strong>Commonveil</strong>, a private messaging and communities app with a server you can host yourself. Anyone may build another, and none gets special treatment.</p>
+
+<h2><span class="n">2</span>The three rules it rests on</h2>
+<p class="lede">Everything else in this guide follows from three rules. If you remember only these, you can reason about most of the design yourself.</p>
+<ol>
+  <li><strong>Keys say who people are; sites only carry.</strong> Each account is a chain of key statements, each signed by the one before. Each device is certified by the account. Each message is signed by the device that sent it and sealed for each device that should read it. People's own apps check all of this. A site that lies about someone's keys is caught.</li>
+  <li><strong>Sites prove which site they are.</strong> Each site has its own key. Every request from one site to another is signed, dated and usable only once.</li>
+  <li><strong>Only shared formats, never shared trust.</strong> Two sites agree on exact byte formats and on which features both speak. Neither has to trust the other's database, software or owner.</li>
+</ol>
+<div class="plain"><strong>In plain words</strong>
+  You never have to believe a website when it tells you who someone is. Your own app checks a chain of signatures that only that person could have made. If the chain breaks, your app warns you and gives you a short number to compare with the other person, in person or by phone.
+</div>
+<h3>How it is built</h3>
+<p>Secure Net is a library and a written specification. The reference library is plain JavaScript modules that run in browsers, Node.js 20 or newer, and Deno. It needs no particular host, database or company.</p>
+<table>
+  <thead><tr><th style="width:28%">Module</th><th>What it does</th><th style="width:22%">Specification</th></tr></thead>
+  <tbody>
+    <tr><th><code>core/</code></th><td>One exact encoding and the signed-record envelope everything else uses</td><td>CVP-002</td></tr>
+    <tr><th><code>crypto/</code>, <code>identity/</code></th><td>Account key chains, device certificates, recovery phrases, personas, moving between sites</td><td>CVP-001, CVP-003</td></tr>
+    <tr><th><code>session/</code></th><td>End-to-end sessions: handshake, ratchet, several devices, sender keys, new devices</td><td>CVP-016</td></tr>
+    <tr><th><code>wire/</code></th><td>Signed requests between sites, the sealed relay, agreeing on features</td><td>CVP-005, 008, 015</td></tr>
+    <tr><th><code>commons/</code></th><td>A community's signed, hash-chained history and its mirrors</td><td>CVP-011</td></tr>
+    <tr><th><code>governance/</code>, <code>tokens/</code></th><td>Motions, debates, ballots; private one-use tokens</td><td>CVP-012, CVP-013</td></tr>
+    <tr><th><code>consent/</code>, <code>extensions/</code></th><td>Revocable permissions; extension and theme packages</td><td>CVP-014, CVP-008</td></tr>
+  </tbody>
+</table>
+<div class="tech"><strong>For builders</strong>
+  The reference library depends on four small cryptography packages from the noble and scure families (<code>@noble/curves</code>, <code>@noble/hashes</code>, <code>@noble/post-quantum</code>, <code>@scure/bip39</code>) and the platform's WebCrypto for AES-256-GCM. A Rust implementation, compiled to WebAssembly so the same code runs in apps and on servers, is in progress (pull request 7): it reproduces the test vectors in <code>spec/vectors/</code> and talks to the JavaScript message by message.
+</div>
+
+<h2 class="page"><span class="n">3</span>Keys: who you are</h2>
+<p class="lede">In Secure Net you are not a username on someone's server. You are a key that you hold, and everything else hangs from it.</p>
+<div class="plain"><strong>In plain words</strong>
+  A key here is a pair: a private half that never leaves your device, and a public half you give to everyone. With the private half you can sign things; anyone with the public half can check your signature but cannot forge it. Your <em>account key</em> vouches for each of your devices. Each device has its own keys, so losing a phone does not mean losing your identity.
+</div>
+<figure>
+<svg viewBox="0 0 760 250" role="img" aria-label="An account key signs a device list. Each device on the list has a signing key and a key-agreement key. A recovery phrase can restore the account key.">
+  <rect width="760" height="250" rx="10" fill="#F7F8F5"/>
+  <defs><marker id="a2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4C5C6A"/></marker></defs>
+  <g font-size="12.5" fill="#101A25">
+    <rect x="30" y="85" width="150" height="70" rx="8" fill="#FCEFE5" stroke="#C2703D" stroke-width="1.5"/><text x="105" y="112" text-anchor="middle" font-weight="700">Recovery phrase</text><text x="105" y="131" text-anchor="middle" font-size="11" fill="#4C5C6A">words you write down</text>
+    <rect x="250" y="75" width="170" height="90" rx="8" fill="#101A25"/><text x="335" y="108" text-anchor="middle" fill="#F7F8F5" font-weight="700">Account key</text><text x="335" y="128" text-anchor="middle" fill="#B9C6D1" font-size="11">Ed25519 + ML-DSA-65</text><text x="335" y="146" text-anchor="middle" fill="#B9C6D1" font-size="11">signs the device list</text>
+    <rect x="500" y="30" width="230" height="80" rx="8" fill="#fff" stroke="#13957C" stroke-width="1.5"/><text x="615" y="55" text-anchor="middle" font-weight="700">Device: phone</text><text x="615" y="75" text-anchor="middle" font-size="11" fill="#4C5C6A">signing key (Ed25519 + ML-DSA-65)</text><text x="615" y="93" text-anchor="middle" font-size="11" fill="#4C5C6A">agreement key (X25519)</text>
+    <rect x="500" y="135" width="230" height="80" rx="8" fill="#fff" stroke="#13957C" stroke-width="1.5"/><text x="615" y="160" text-anchor="middle" font-weight="700">Device: laptop</text><text x="615" y="180" text-anchor="middle" font-size="11" fill="#4C5C6A">signing key (Ed25519 + ML-DSA-65)</text><text x="615" y="198" text-anchor="middle" font-size="11" fill="#4C5C6A">agreement key (X25519)</text>
+  </g>
+  <g stroke="#4C5C6A" stroke-width="2" fill="none" marker-end="url(#a2)"><path d="M182 120 H244"/><path d="M422 105 C460 95 460 75 494 72"/><path d="M422 135 C460 145 460 170 494 174"/></g>
+  <g font-size="11" fill="#4C5C6A" text-anchor="middle"><text x="213" y="111">restores</text><text x="462" y="124">certifies</text></g>
+</svg>
+<figcaption>Figure 2. One account, several devices. The account key signs a numbered list of devices; a newer list replaces an older one.</figcaption>
+</figure>
+<h3>Changing keys without losing your name</h3>
+<p>Keys sometimes have to change: a device is lost, or you move to a different site. Secure Net handles this with a <strong>key chain</strong>: each new key statement is signed by the key before it. Anyone who knew your old key can follow the chain to your new one and see that it really is you. If a key ever changes <em>without</em> a valid chain, apps warn you and show a <strong>safety number</strong>: a short number that two people can compare to be sure nobody is in the middle.</p>
+<h3>Personas and moving</h3>
+<p>You can show a different face in each community (a <em>persona</em>). And because your identity is a key rather than an address on a server, you can move to another site with a signed statement, and people who follow the chain come with you.</p>
+<div class="tech"><strong>For builders</strong>
+  A quantum-resistant public key is written as the base64url Ed25519 key, a full stop, then the base64url ML-DSA-65 key (1,952 bytes). A key's id (<code>kid</code>) is the first 22 base64url characters of the SHA-256 of the key. Device lists are signed records of kind <code>session.devices</code> with a sequence number; a receiver refuses a list with a lower number than one it has seen. The safety number is a short run of digits taken from the SHA-256 of both account keys, sorted, under the label <code>secure-net/session/v1/safety</code>. See CVP-001, CVP-002 section 2 and CVP-016 "Devices".
+</div>
+
+<h2><span class="n">4</span>One exact encoding, and signed records</h2>
+<p class="lede">A signature is made over bytes. If two programs turn the same information into different bytes, a signature made by one will not check on the other. So the first thing Secure Net fixes is exactly how to write things down.</p>
+<div class="plain"><strong>In plain words</strong>
+  Imagine two people signing "the same" contract, but one copy has an extra space on page three. Are the signatures on the same document? Secure Net removes the question: there is exactly one way to write any piece of information, down to the last character.
+</div>
+<h3>Canonical JSON</h3>
+<p>Secure Net writes data as JSON, with strict rules: object members sorted by key, no spaces, whole numbers only (within the range every programming language handles exactly), and one way to escape characters. A program must <em>refuse</em> anything that could be written two ways, such as a fraction, rather than quietly tidy it.</p>
+<h3>The signed record</h3>
+<p>Almost everything that matters is a <strong>signed record</strong>: a kind, a body, and a signature. Ledger blocks, ballots, device lists and prekeys are all this one shape.</p>
+<pre><code>{
+  "kind": "session.devices",              <span class="c">// what sort of record this is</span>
+  "body": { "account": "...", "seq": 3, "devices": [ ... ] },
+  "sig":  { "kid": "Qm3...", "ed": "...", "pq": "..." }   <span class="c">// Ed25519 and ML-DSA-65</span>
+}</code></pre>
+<div class="tech"><strong>For builders</strong>
+  The bytes signed are the UTF-8 of <code>secure-net/&lt;kind&gt;/v1</code>, one newline byte, then the canonical JSON of the body. Putting the kind in front means a signature on one kind of record can never be passed off as another kind. When a key is quantum-resistant, <em>both</em> signatures must be present and both must verify. Verifiers check that the key id matches the key, and the key, not the signature, decides which signatures are required. Canonical JSON is the subset of RFC 8785 (JCS) whose output is identical in every language. Read CVP-002, and check your implementation against <code>spec/vectors/</code>.
+</div>
+
+<h2><span class="n">5</span>Sites talking to each other</h2>
+<p class="lede">A site is any server that carries messages for its people. Anyone can run one. Sites do not need to trust each other, only to prove which site they are.</p>
+<h3>Signed requests</h3>
+<p>Each site publishes its key at a well-known address. When <code>a.example</code> asks <code>b.example</code> for something, the request is signed over what is being asked, both site names, the time, a one-off number and a digest of the contents. A request more than five minutes old, or whose one-off number has been seen before, is refused. So a recording of a request cannot be replayed, and nobody can speak for a site without its key.</p>
+<h3>The sealed relay</h3>
+<p>The contents one site passes another are sealed for the receiving site alone. Someone watching the network between them sees that two sites are talking, but not who is writing to whom.</p>
+<h3>Agreeing on features</h3>
+<p>Sites announce which features they speak and at which version. Two sites use what both understand. A newer site keeps speaking the older version of a feature it still announces, so sites can upgrade at different times.</p>
+<div class="tech"><strong>For builders</strong>
+  The site document is served at <code>/.well-known/commonveil</code> and lists the site's key and endpoints. The relay seal combines ECDH on P-256 with ML-KEM-768 (HKDF-SHA-256, AES-256-GCM), and relay signatures combine Ed25519 with ML-DSA-65; both must verify (CVP-015). Sites must refuse to connect to private or loopback addresses when following another site's instructions. See CVP-005, CVP-008 and CVP-015; Commonveil's self-hosted server is the reference site.
+</div>
+
+<h2 class="page"><span class="n">6</span>How one message travels</h2>
+<p class="lede">Ann is on one site and Ben is on another. Different people run each site. Here is what happens when Ann writes to Ben.</p>
+<figure>
+<svg viewBox="0 0 760 360" role="img" aria-label="Sequence: Ann's app looks up Ben through both sites and checks his keys; Ann's app seals and signs the message; Ann's site relays it to Ben's site; Ben's device checks Ann's signature and opens it.">
+  <rect width="760" height="360" rx="10" fill="#F7F8F5"/>
+  <defs><marker id="a3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#101A25"/></marker></defs>
+  <g font-size="12.5" font-weight="700" text-anchor="middle">
+    <rect x="30" y="18" width="130" height="34" rx="6" fill="#E3F5EF" stroke="#13957C"/><text x="95" y="40" fill="#101A25">Ann's app</text>
+    <rect x="220" y="18" width="130" height="34" rx="6" fill="#101A25"/><text x="285" y="40" fill="#F7F8F5">a.example</text>
+    <rect x="410" y="18" width="130" height="34" rx="6" fill="#101A25"/><text x="475" y="40" fill="#F7F8F5">b.example</text>
+    <rect x="600" y="18" width="130" height="34" rx="6" fill="#E3F5EF" stroke="#13957C"/><text x="665" y="40" fill="#101A25">Ben's app</text>
+  </g>
+  <g stroke="#B9C6D1" stroke-width="1.5" stroke-dasharray="4 4"><path d="M95 52V345"/><path d="M285 52V345"/><path d="M475 52V345"/><path d="M665 52V345"/></g>
+  <g stroke="#101A25" stroke-width="1.8" fill="none" marker-end="url(#a3)">
+    <path d="M95 88H279"/><path d="M285 112H469"/><path d="M475 136H291"/><path d="M285 160H101"/>
+    <path d="M95 232H279"/><path d="M285 262H469"/><path d="M475 292H659"/>
+  </g>
+  <g font-size="11.5" fill="#101A25">
+    <text x="105" y="82">1. Who is Ben?</text><text x="295" y="106">signed request for Ben's keys</text><text x="301" y="130">Ben's key chain and devices</text><text x="111" y="154">passed back</text>
+    <rect x="30" y="172" width="160" height="38" rx="6" fill="#fff" stroke="#13957C"/><text x="40" y="188" font-weight="700">2. Check, seal, sign</text><text x="40" y="203" font-size="10.5" fill="#4C5C6A">all on Ann's device</text>
+    <text x="105" y="226">sealed message</text><text x="295" y="256">3. relayed, signed by a.example</text><text x="485" y="286">delivered</text>
+    <rect x="570" y="304" width="170" height="38" rx="6" fill="#fff" stroke="#13957C"/><text x="580" y="320" font-weight="700">4. Check Ann, open</text><text x="580" y="335" font-size="10.5" fill="#4C5C6A">all on Ben's device</text>
+  </g>
+</svg>
+<figcaption>Figure 3. The journey of one message. The two boxes outlined in green are the only places the message exists unsealed.</figcaption>
+</figure>
+<ol>
+  <li><strong>Find.</strong> Ann's app asks her site to look up Ben. Her site asks Ben's site for his keys with a signed request. Ann's app then checks Ben's key chain <em>itself</em>; it does not take either site's word.</li>
+  <li><strong>Seal and sign.</strong> Ann's app seals the message for each of Ben's devices (and her own other devices) and signs it. Only then does it leave her device.</li>
+  <li><strong>Relay.</strong> Ann's site passes the sealed message to Ben's site, in a request sealed and signed between the two sites.</li>
+  <li><strong>Check and open.</strong> Ben's devices check Ann's signature against her key history, then open the message.</li>
+</ol>
+<div class="note"><strong>What the sites still learn</strong>
+  Neither site can read the message. Either can refuse or delay it. And both learn that Ann and Ben talked, when, and roughly how much. Encryption hides what you say, not that you spoke. Section 11 sets this out in full, and section 12 describes a proposal that hides more.
+</div>
+
+<h2 class="page"><span class="n">7</span>Sessions: agreeing and changing keys</h2>
+<p class="lede">Sealing a message needs a secret that only the two devices share. A session is how two devices agree that secret without ever having met, and how they keep changing it as they talk. <span class="tag in">In the protocol</span></p>
+<div class="plain"><strong>In plain words</strong>
+  Ben may be offline when Ann first writes. So each of Ben's devices leaves a small stack of single-use public keys with his site, like stamped, self-addressed envelopes. Ann takes one, combines it with her own keys, and both ends arrive at the same secret, which never travels. After that, every message uses a new key, and each reply reshuffles the keys again. Someone who steals one key gets one message. Someone who steals a whole device today cannot read yesterday's messages, and loses their grip once the conversation moves on.
+</div>
+<h3>The handshake</h3>
+<figure>
+<svg viewBox="0 0 760 250" role="img" aria-label="The handshake combines up to four X25519 agreements and one ML-KEM-768 secret, together with a hash of everything both sides saw, into one root key.">
+  <rect width="760" height="250" rx="10" fill="#F7F8F5"/>
+  <defs><marker id="a4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4C5C6A"/></marker></defs>
+  <g font-size="11.5" fill="#101A25">
+    <rect x="20" y="20" width="250" height="34" rx="6" fill="#fff" stroke="#77899A"/><text x="30" y="42">Ann's device key × Ben's signed prekey</text>
+    <rect x="20" y="62" width="250" height="34" rx="6" fill="#fff" stroke="#77899A"/><text x="30" y="84">Ann's one-off key × Ben's device key</text>
+    <rect x="20" y="104" width="250" height="34" rx="6" fill="#fff" stroke="#77899A"/><text x="30" y="126">Ann's one-off key × Ben's signed prekey</text>
+    <rect x="20" y="146" width="250" height="34" rx="6" fill="#fff" stroke="#77899A" stroke-dasharray="5 4"/><text x="30" y="168">Ann's one-off key × Ben's one-time prekey</text>
+    <rect x="20" y="194" width="250" height="34" rx="6" fill="#E3F5EF" stroke="#13957C" stroke-width="1.5"/><text x="30" y="216" font-weight="700">ML-KEM-768 secret (quantum-resistant)</text>
+    <rect x="345" y="78" width="150" height="94" rx="8" fill="#101A25"/><text x="420" y="112" text-anchor="middle" fill="#F7F8F5" font-weight="700">Mix (HKDF)</text><text x="420" y="132" text-anchor="middle" fill="#B9C6D1" font-size="10.5">with a hash of all</text><text x="420" y="147" text-anchor="middle" fill="#B9C6D1" font-size="10.5">keys both sides saw</text>
+    <rect x="570" y="95" width="170" height="60" rx="8" fill="#FCEFE5" stroke="#C2703D" stroke-width="1.5"/><text x="655" y="121" text-anchor="middle" font-weight="700">Root key</text><text x="655" y="140" text-anchor="middle" font-size="10.5" fill="#4C5C6A">the same on both devices</text>
+  </g>
+  <g stroke="#4C5C6A" stroke-width="1.6" fill="none" marker-end="url(#a4)"><path d="M272 37 C310 37 310 100 340 105"/><path d="M272 79 C305 79 310 112 340 116"/><path d="M272 121 H340"/><path d="M272 163 C305 163 310 136 340 133"/><path d="M272 211 C312 211 310 150 340 145"/><path d="M497 125H564"/></g>
+  <text x="300" y="20" font-size="10.5" fill="#4C5C6A">four X25519 agreements (the fourth is optional)</text>
+</svg>
+<figcaption>Figure 4. Two kinds of mathematics are mixed. An attacker has to break both: the established kind (X25519) and the quantum-resistant kind (ML-KEM-768).</figcaption>
+</figure>
+<h3>The ratchet</h3>
+<p>From the root key the two devices derive a chain of message keys. Each message uses the next key and then throws it away. Each time the direction of conversation turns, both sides mix in fresh key material, so the chain heals after a compromise. This is the <em>double ratchet</em>, the design used by Signal, with a quantum-resistant step added.</p>
+<figure>
+<svg viewBox="0 0 760 170" role="img" aria-label="A chain of keys: each message key is derived from the one before and then deleted; when the conversation changes direction, new key material is mixed in.">
+  <rect width="760" height="170" rx="10" fill="#F7F8F5"/>
+  <defs><marker id="a5" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4C5C6A"/></marker></defs>
+  <g font-size="11.5" text-anchor="middle" fill="#101A25">
+    <rect x="20" y="30" width="96" height="44" rx="6" fill="#FCEFE5" stroke="#C2703D"/><text x="68" y="57" font-weight="700">Root key</text>
+    <rect x="160" y="30" width="80" height="44" rx="6" fill="#fff" stroke="#77899A"/><text x="200" y="57">key 1</text>
+    <rect x="270" y="30" width="80" height="44" rx="6" fill="#fff" stroke="#77899A"/><text x="310" y="57">key 2</text>
+    <rect x="380" y="30" width="80" height="44" rx="6" fill="#fff" stroke="#77899A"/><text x="420" y="57">key 3</text>
+    <rect x="520" y="30" width="96" height="44" rx="6" fill="#FCEFE5" stroke="#C2703D"/><text x="568" y="57" font-weight="700">New root</text>
+    <rect x="660" y="30" width="80" height="44" rx="6" fill="#fff" stroke="#77899A"/><text x="700" y="57">key 1</text>
+    <rect x="484" y="110" width="168" height="40" rx="6" fill="#E3F5EF" stroke="#13957C"/><text x="568" y="127" font-size="10.5">fresh X25519 and</text><text x="568" y="142" font-size="10.5">ML-KEM-768 material</text>
+    <text x="200" y="98" font-size="10.5" fill="#4C5C6A">message 1</text><text x="310" y="98" font-size="10.5" fill="#4C5C6A">message 2</text><text x="420" y="98" font-size="10.5" fill="#4C5C6A">message 3</text><text x="700" y="98" font-size="10.5" fill="#4C5C6A">the reply</text>
+  </g>
+  <g stroke="#4C5C6A" stroke-width="1.6" fill="none" marker-end="url(#a5)"><path d="M118 52H154"/><path d="M242 52H264"/><path d="M352 52H374"/><path d="M462 52H514"/><path d="M618 52H654"/><path d="M568 108V80"/></g>
+</svg>
+<figcaption>Figure 5. Keys only move forwards. Used keys are deleted, so an old message cannot be opened later even with the device in hand.</figcaption>
+</figure>
+<h3>Several devices, audiences and new devices</h3>
+<ul>
+  <li><strong>Several devices.</strong> A message to Ben is sealed separately for each device on his signed device list, and for the sender's own other devices.</li>
+  <li><strong>Sender keys.</strong> To write to many readers at once, a device makes one key for its own messages and hands it to each reader over their one-to-one sessions.</li>
+  <li><strong>A new device.</strong> When you add a device, an existing one can pass it your message history, sealed for the new device.</li>
+</ul>
+<div class="tech"><strong>For builders</strong>
+  The handshake follows the shape of Signal's PQXDH: <code>SK = HKDF-SHA-256(0xFF×32 ‖ DH1 ‖ DH2 ‖ DH3 [‖ DH4] ‖ SS)</code> with a transcript hash in the HKDF info. Prekeys are signed records; ML-KEM-768 prekeys come as one-time keys plus a signed last-resort key. The ratchet's root step is <code>HKDF(ikm = DH ‖ SS, salt = RK)</code>; message keys come from an HMAC-SHA-256 chain; messages are AES-256-GCM with the transcript hash and header as associated data. An all-zero X25519 output is refused. Limits: 1,000 skipped messages per chain, 2,000 stored keys. Read CVP-016 and reproduce <code>spec/vectors/cvp-016-v1.json</code>.
+</div>
+
+<h2><span class="n">8</span>Communities that outlive their host</h2>
+<p class="lede">A community usually lives on one site. If that site disappears, so does the community. Secure Net gives a community a history of its own that other sites can hold, so it can carry on. <span class="tag in">In the protocol</span></p>
+<div class="plain"><strong>In plain words</strong>
+  The community keeps a minute book. Every entry is signed by someone allowed to make it and refers to the entry before, so pages cannot be torn out or swapped. Approved sites keep copies. If the home site goes down, the next site on an agreed list takes over, using its copy. A copy-holder can check everything but cannot read private content or change who is in charge.
+</div>
+<figure>
+<svg viewBox="0 0 760 210" role="img" aria-label="A chain of signed blocks, each containing the hash of the one before. A home site and two mirrors each hold a copy; a succession list says which mirror takes over.">
+  <rect width="760" height="210" rx="10" fill="#F7F8F5"/>
+  <defs><marker id="a6" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4C5C6A"/></marker></defs>
+  <g font-size="11.5" fill="#101A25">
+    <g><rect x="20" y="24" width="150" height="70" rx="6" fill="#fff" stroke="#77899A"/><text x="30" y="44" font-weight="700">Block 0: founding</text><text x="30" y="62" font-size="10.5" fill="#4C5C6A">who is in charge,</text><text x="30" y="77" font-size="10.5" fill="#4C5C6A">home, mirrors</text></g>
+    <g><rect x="210" y="24" width="150" height="70" rx="6" fill="#fff" stroke="#77899A"/><text x="220" y="44" font-weight="700">Block 1</text><text x="220" y="62" font-size="10.5" fill="#4C5C6A">hash of block 0</text><text x="220" y="77" font-size="10.5" fill="#4C5C6A">a change + signature</text></g>
+    <g><rect x="400" y="24" width="150" height="70" rx="6" fill="#fff" stroke="#77899A"/><text x="410" y="44" font-weight="700">Block 2</text><text x="410" y="62" font-size="10.5" fill="#4C5C6A">hash of block 1</text><text x="410" y="77" font-size="10.5" fill="#4C5C6A">a change + signature</text></g>
+    <g><rect x="590" y="24" width="150" height="70" rx="6" fill="#fff" stroke="#77899A" stroke-dasharray="5 4"/><text x="600" y="44" font-weight="700">Block 3 ...</text><text x="600" y="62" font-size="10.5" fill="#4C5C6A">hash of block 2</text></g>
+    <rect x="80" y="140" width="170" height="50" rx="8" fill="#101A25"/><text x="165" y="162" text-anchor="middle" fill="#F7F8F5" font-weight="700">home.example</text><text x="165" y="179" text-anchor="middle" fill="#B9C6D1" font-size="10.5">serves the community</text>
+    <rect x="295" y="140" width="170" height="50" rx="8" fill="#1B2937"/><text x="380" y="162" text-anchor="middle" fill="#F7F8F5" font-weight="700">mirror-1.example</text><text x="380" y="179" text-anchor="middle" fill="#B9C6D1" font-size="10.5">checked copy, next in line</text>
+    <rect x="510" y="140" width="170" height="50" rx="8" fill="#1B2937"/><text x="595" y="162" text-anchor="middle" fill="#F7F8F5" font-weight="700">mirror-2.example</text><text x="595" y="179" text-anchor="middle" fill="#B9C6D1" font-size="10.5">checked copy</text>
+  </g>
+  <g stroke="#4C5C6A" stroke-width="1.6" fill="none" marker-end="url(#a6)"><path d="M172 59H204"/><path d="M362 59H394"/><path d="M552 59H584"/></g>
+  <text x="380" y="124" text-anchor="middle" font-size="10.5" fill="#4C5C6A">every copy replays the whole chain and checks every signature itself</text>
+</svg>
+<figcaption>Figure 6. The commons ledger. It is a signed, hash-chained history held by a few named sites. It is not a blockchain: there is no mining, no token and no global network.</figcaption>
+</figure>
+<div class="tech"><strong>For builders</strong>
+  Blocks are signed records. A block's id is the SHA-256 of exactly what was signed, and each block names the id of the one before. The founding block names the authority keys, the home site, the replicas and a succession order. <code>replay(blocks)</code> rebuilds the state and rejects any block whose signer lacked the capability at that point in history. <code>chooseHost</code> works out which site should be serving: the home site if it can be reached, otherwise (unless the community has switched this off) the first reachable site in the succession order. See CVP-011.
+</div>
+
+<h2><span class="n">9</span>Debates, votes and private tokens</h2>
+<p class="lede">Communities need to decide things. Secure Net includes proposals, structured debate and ballots whose results any member can recount. <span class="tag in">In the protocol</span></p>
+<div class="plain"><strong>In plain words</strong>
+  Someone puts forward a motion. Members debate it in a structured way, then vote. A public ballot shows who voted how. A secret ballot does not, and yet every member can still check that only members voted, that nobody voted twice, and that the count is right. A passed motion can authorise a change in the community's minute book (section 8).
+</div>
+<h3>How a secret ballot can be checked</h3>
+<ol>
+  <li>Before the vote, each member asks the community for a single-use <strong>token</strong>. The community signs it "blind": it can tell that it issued one token to each member, but not which token went to whom.</li>
+  <li>To vote, a member hands in their ballot with their token, not their name.</li>
+  <li>Anyone can check that every counted ballot carries a valid, unused token. Nobody, including the community's own site, can link a ballot to a person.</li>
+</ol>
+<p>The same tokens serve other needs where you must prove you are entitled to do something once without saying who you are: anonymous reports, and rate limits that don't track people.</p>
+<h3>Consent you can withdraw</h3>
+<p>A <em>consent capsule</em> is a signed, specific, time-limited permission: this person may do this thing with this data until this date. It can be withdrawn, and it says plainly what withdrawing can and cannot undo (a copy someone already made cannot be unmade).</p>
+<div class="tech"><strong>For builders</strong>
+  Tokens are a verifiable oblivious pseudorandom function (RFC 9497 VOPRF) over P-256. Motions, debate entries and ballots are signed records; tallies are recomputed from the records, never taken from a server. Note that P-256 tokens are <em>not</em> quantum-resistant (section 10). See CVP-012, CVP-013 and CVP-014.
+</div>
+
+<h2 class="page"><span class="n">10</span>Resisting a quantum computer</h2>
+<p class="lede">A large quantum computer, if one is built, would break the mathematics that protects most of today's internet. Messages recorded now could be opened then. Secure Net is designed so that this does not work against it.</p>
+<div class="plain"><strong>In plain words</strong>
+  Secure Net uses two locks of different kinds on the same door: one of the established kind, which has been attacked for decades and held, and one of a newer kind designed to resist quantum computers. To get in, an attacker must pick both. If the new kind turns out to have a flaw, the old kind still holds; if a quantum computer arrives, the new kind still holds.
+</div>
+<table>
+  <thead><tr><th style="width:26%">Job</th><th>Established</th><th>Quantum-resistant</th><th style="width:27%">Where</th></tr></thead>
+  <tbody>
+    <tr><th>Agreeing a secret</th><td>X25519 (sessions), P-256 (the relay)</td><td>ML-KEM-768 (FIPS 203)</td><td>Sessions, the sealed relay</td></tr>
+    <tr><th>Signing</th><td>Ed25519</td><td>ML-DSA-65 (FIPS 204)</td><td>Accounts, devices, sites, records</td></tr>
+    <tr><th>Sealing content</th><td colspan="2">AES-256-GCM (already considered strong enough against quantum attack)</td><td>Messages</td></tr>
+    <tr><th>Hashing and key derivation</th><td colspan="2">SHA-256, SHA-512, HMAC, HKDF</td><td>Everywhere</td></tr>
+  </tbody>
+</table>
+<div class="note"><strong>What does not resist a quantum computer yet</strong>
+  Private voting tokens (section 9) use P-256 alone. Commonveil, the application, uses the quantum-resistant sessions only as an opt-in, experimental extra layer on direct messages; its ordinary message signatures are not yet quantum-resistant. The specification part CVP-015 lists, feature by feature, what is and is not protected.
+</div>
+
+<h2><span class="n">11</span>What each party can still see</h2>
+<p class="lede">No system hides everything. Secure Net's rule is that an app must show people what remains visible, and must not promise more.</p>
+<table>
+  <thead><tr><th style="width:25%">Who</th><th>What you say</th><th>Who talks to whom</th><th>Community membership</th><th>Your network address</th></tr></thead>
+  <tbody>
+    <tr><th>Your own site</th><td>No</td><td>Yes, for your conversations</td><td>Yours</td><td>Yes</td></tr>
+    <tr><th>The other person's site</th><td>No</td><td>Yes, for conversations with its people</td><td>Of communities it hosts</td><td>Your site's, not yours</td></tr>
+    <tr><th>A community's home or mirror</th><td>No</td><td>Who posts in it, and when</td><td>Yes</td><td>Of the sites relaying</td></tr>
+    <tr><th>Someone watching the network</th><td>No</td><td>Which sites talk to each other</td><td>No</td><td>Yes</td></tr>
+  </tbody>
+</table>
+<p>What this means in practice:</p>
+<ul>
+  <li>The <strong>content</strong> of messages is hidden from everyone but the devices they were sealed for.</li>
+  <li><strong>Who talks to whom, and when</strong>, is visible to the sites involved. If that matters to you, choose a site you trust, run your own, or wait for sealed sending (section 12).</li>
+  <li>A site can always <strong>refuse or delay</strong> messages. It cannot alter or forge them.</li>
+  <li>The person you write to can always <strong>copy</strong> what they read. No protocol prevents that.</li>
+</ul>
+
+<h2 class="page"><span class="n">12</span>Proposed: the social protocol, sessions version 2 and groups</h2>
+<div class="draft"><strong>Everything in this section is a proposal</strong>
+  These are open pull requests on GitHub: written, tested and documented, but not accepted into the protocol and not examined by a human cryptographer. They may change or be rejected. They are described here because they show where the protocol is heading.
+</div>
+<h3>A standards framework <span class="tag prop">Proposed</span></h3>
+<p>Rules for the standard itself: how parts are numbered and versioned, a registry of every name two implementations must agree on, a conformance statement an implementation publishes, and a checker that compares the code with the documents on every change. (CVP-000, CVP-010.)</p>
+<h3>A social protocol <span class="tag prop">Proposed</span></h3>
+<p>Posts, replies, follows and likes, using the same vocabulary as ActivityPub (the standard behind Mastodon) on Secure Net's own wire format.</p>
+<ul>
+  <li><strong>Actors</strong> are people, groups or services. An actor is a key, not an address a server controls, so it can move between sites and keep its followers (CVP-017).</li>
+  <li><strong>Activities</strong> (Create, Follow, Like and so on) are signed on the device that made them (CVP-018).</li>
+  <li><strong>Envelopes</strong> say how an activity travels: public posts are signed but readable; everything else is sealed (CVP-019).</li>
+  <li><strong>Repositories</strong> keep an actor's public posts as one signed set that anyone can check is complete (CVP-020).</li>
+  <li><strong>Lexicons</strong> let anyone define a new kind of object, such as a recipe, without changing the standard (CVP-021).</li>
+</ul>
+<table>
+  <thead><tr><th style="width:17%">Envelope</th><th style="width:30%">For</th><th>What a carrying site sees</th></tr></thead>
+  <tbody>
+    <tr><th>Public</th><td>Posts for everyone</td><td>Everything. Signed, so it cannot be altered.</td></tr>
+    <tr><th>Direct</th><td>One actor to another</td><td>Version 1: both actors. Version 2: the recipient only.</td></tr>
+    <tr><th>Audience</th><td>Followers-only posts</td><td>The author and the list of recipients, not the content.</td></tr>
+    <tr><th>Group</th><td>Members of a group</td><td>The group's id and the recipient, not the content or the sender.</td></tr>
+  </tbody>
+</table>
+<h3>Sessions version 2 and sealed sending <span class="tag prop">Proposed</span></h3>
+<ul>
+  <li><strong>Hidden sender.</strong> The first message of a conversation no longer says who it is from; only the receiving device can tell.</li>
+  <li><strong>Encrypted headers.</strong> Nothing on a message links it to other messages of the same conversation.</li>
+  <li><strong>Smaller messages.</strong> The quantum-resistant key material travels in small pieces across several messages: about 0.4 KB of overhead per message on average, down from 3.1 KB. The cost is that a fresh quantum-resistant secret enters about every 22 messages of back-and-forth, not on every reply.</li>
+  <li><strong>Sealed sending.</strong> Once two people have spoken, each holds a delivery token for the other, and can hand messages straight to the other's site without saying who they are. Neither site then learns the sender.</li>
+  <li><strong>Deniable direct messages.</strong> Direct messages are trusted through the session and carry no signature, so the person you wrote to cannot prove to anyone else what you wrote.</li>
+</ul>
+<h3>Groups <span class="tag prop">Proposed</span></h3>
+<p>Group conversations would use <strong>Messaging Layer Security</strong> (MLS, the internet standard RFC 9420) with a quantum-resistant suite. In an MLS group, one change replaces the group's secret for everyone, so a removed member, or someone holding a copy of a member's old keys, is locked out at once. To keep one order of changes without a central server, only the device that created a group may change its membership. The reference code relies on a third-party MLS library that has had no formal security audit. (CVP-022.)</p>
+<div class="tech"><strong>For builders</strong>
+  Version 2 header keys follow section 4 of Signal's Double Ratchet specification. ML-KEM-768 keys and ciphertexts travel in 256-byte pieces inside encrypted headers; the side that sent the key mixes the secret into the root chain at its next new sending chain. The delivery-token verifier a site stores is <code>SHA-256("secure-net/social/v2/delivery-token\n" ‖ token)</code>. The MLS suite is X-Wing (X25519 with ML-KEM-768), AES-256-GCM, SHA-512 and ML-DSA-87; credentials are signed by Secure Net device keys. Pull requests 3, 4 and 5 on the repository.
+</div>
+
+<h2 class="page"><span class="n">13</span>How to use it</h2>
+<p class="lede">There are three ways to use Secure Net, depending on who you are.</p>
+<h3>If you want to talk to people</h3>
+<p>Use an application built on it. Today that is Commonveil. You do not need to understand anything in this guide to use it, but please read section 15 first: it is early, unaudited software.</p>
+<h3>If you want to run a site</h3>
+<p>Commonveil's self-hosted server is the reference site: it runs in Docker and speaks to other Secure Net sites. Any software that implements identity (CVP-001), the encoding (CVP-002) and site-to-site requests (CVP-005) can join.</p>
+<h3>If you want to build with it</h3>
+<p>You need Node.js 20 or newer (or a modern browser, or Deno). No packaged release exists yet, so install from GitHub:</p>
+<pre><code>npm install github:Comutability/secure-net</code></pre>
+<p>Or work on the library itself:</p>
+<pre><code>git clone https://github.com/Comutability/secure-net
+cd secure-net
+npm install
+npm test            <span class="c"># every test, with Node's own test runner</span>
+npm run example     <span class="c"># two people, several devices, a group, a new device</span></code></pre>
+<p><strong>Two devices exchanging a message.</strong> Bob publishes prekeys; Alice fetches a bundle of them and checks it against the account key she trusts for Bob.</p>
+<pre><code>import * as s from "@comutability/secure-net/session";
+
+<span class="c">// On Alice's device</span>
+let alice = s.initiate({ me: { device, deviceList }, bundle, accountKey: bobsAccountKey });
+const { state, message } = await s.encrypt(alice, "Hello");
+<span class="c">// store `state`; send `message` through any relay: it is already sealed</span>
+
+<span class="c">// On Bob's device</span>
+const r = await s.respond({ me: { device, deviceList, prekeys }, message,
+                            accountKey: alicesAccountKey });
+<span class="c">// r.plaintext is the message; store r.state and r.prekeys</span></code></pre>
+<p><strong>A community that survives its host.</strong></p>
+<pre><code>import { ledger } from "@comutability/secure-net";
+
+const founding = ledger.genesis({
+  name: "Allotment Society",
+  keys: [{ kid: alice.kid, pub: alice.publicKey, caps: ["authority"] }],
+  home: { site: "home.example", kid: siteKey.kid, pub: siteKey.publicKey },
+  replicas: [{ site: "mirror.example", kid: mirrorKey.kid, pub: mirrorKey.publicKey }],
+  succession: ["mirror.example"],
+}, alice);
+
+const state = ledger.replay([founding]);   <span class="c">// any copy checks every block itself</span></code></pre>
+<h3>Rules of thumb for builders</h3>
+<ul>
+  <li><strong>Store the new state before you show the message.</strong> Every session call returns a new state and never changes the old one, so a failure leaves you exactly where you were.</li>
+  <li><strong>Check keys on the device, never on the server.</strong> A server-side check is a promise, not a proof.</li>
+  <li><strong>Show safety numbers</strong> and warn when an account key changes without a valid chain.</li>
+  <li><strong>Reproduce the test vectors</strong> in <code>spec/vectors/</code> before trusting your own implementation.</li>
+  <li><strong>Show people what is still visible</strong> (section 11), and do not promise more.</li>
+</ul>
+
+<h2><span class="n">14</span>How the protocol changes</h2>
+<p class="lede">A protocol is only useful if people can rely on it staying compatible. Changes go through a public process, decided by people.</p>
+<figure>
+<svg viewBox="0 0 760 130" role="img" aria-label="Five steps: a public proposal, examination, working code and tests, a recorded decision, then a numbered version.">
+  <rect width="760" height="130" rx="10" fill="#F7F8F5"/>
+  <defs><marker id="a7" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0L10 5L0 10z" fill="#4C5C6A"/></marker></defs>
+  <g font-size="11.5" text-anchor="middle" fill="#101A25">
+    <rect x="14" y="30" width="128" height="64" rx="8" fill="#fff" stroke="#77899A"/><text x="78" y="57" font-weight="700">1. Proposal</text><text x="78" y="75" font-size="10.5" fill="#4C5C6A">public, numbered</text>
+    <rect x="165" y="30" width="128" height="64" rx="8" fill="#FCEFE5" stroke="#C2703D"/><text x="229" y="57" font-weight="700">2. Examination</text><text x="229" y="75" font-size="10.5" fill="#4C5C6A">by people</text>
+    <rect x="316" y="30" width="128" height="64" rx="8" fill="#fff" stroke="#77899A"/><text x="380" y="57" font-weight="700">3. Code and tests</text><text x="380" y="75" font-size="10.5" fill="#4C5C6A">it does what it says</text>
+    <rect x="467" y="30" width="128" height="64" rx="8" fill="#FCEFE5" stroke="#C2703D"/><text x="531" y="57" font-weight="700">4. Decision</text><text x="531" y="75" font-size="10.5" fill="#4C5C6A">recorded, with reasons</text>
+    <rect x="618" y="30" width="128" height="64" rx="8" fill="#FCEFE5" stroke="#C2703D"/><text x="682" y="57" font-weight="700">5. Version</text><text x="682" y="75" font-size="10.5" fill="#4C5C6A">after required review</text>
+  </g>
+  <g stroke="#4C5C6A" stroke-width="1.6" fill="none" marker-end="url(#a7)"><path d="M144 62H160"/><path d="M295 62H311"/><path d="M446 62H462"/><path d="M597 62H613"/></g>
+  <text x="380" y="116" text-anchor="middle" font-size="10.5" fill="#4C5C6A">Peach steps need a person. AI may draft and test, but may not approve its own security-sensitive changes.</text>
+</svg>
+<figcaption>Figure 7. The proposal process (a draft, not yet ratified). Proposals are called SNIPs: Secure Net Improvement Proposals.</figcaption>
+</figure>
+<ul>
+  <li><strong>SNIPs</strong> live in <code>snips/</code> in the repository. Each says what problem it solves, what changes, what alternatives were considered, and what it does to compatibility and privacy.</li>
+  <li><strong>Parts</strong> of the specification are numbered <code>CVP-nnn</code> and versioned separately. A change that existing software could not understand needs a new version, and the old one keeps working for a time.</li>
+  <li><strong>Test vectors</strong> are files of exact inputs and expected outputs. If your implementation produces the same bytes, it agrees with everyone else's.</li>
+  <li><strong>Accepting a proposal does not deploy it anywhere.</strong> Each application decides when to adopt a version.</li>
+</ul>
+<p>You can follow open proposals on the Updates page of <a href="https://comutability.org/updates">comutability.org</a>, and discuss them in the proposals forum of the Comutability community on Commonveil.</p>
+
+<h2><span class="n">15</span>Limits, and what is not done</h2>
+<p class="lede">A written specification is not proof that software is safe. These are the limits known today.</p>
+<ul>
+  <li><strong>No independent security audit.</strong> Nobody outside the project has examined Secure Net.</li>
+  <li><strong>Its newest parts were written with AI assistance</strong> and have not yet been examined by a human security reviewer: the sealed relay, quantum-resistant signatures and end-to-end sessions. The proposals in section 12 are in the same position.</li>
+  <li><strong>No formal model.</strong> Signal's protocols have machine-checked proofs. Secure Net has tests and vectors, which show the code does what the specification says, not that the design is sound.</li>
+  <li><strong>One implementation, one application.</strong> Working with a second, independent implementation or application has not been shown.</li>
+  <li><strong>Early software.</strong> Its version number starts with 0. Anything may still change. No packaged release has been made.</li>
+  <li><strong>Sites learn who talks to whom</strong> (section 11) unless and until sealed sending is accepted and adopted.</li>
+  <li><strong>Parts of the specification are not written down yet.</strong> Several areas exist as reference code and tests, with their specification documents still to come.</li>
+  <li><strong>Recovery has limits.</strong> If you lose every device and your recovery phrase, nobody can restore your account. That is the price of nobody else holding your keys.</li>
+</ul>
+<div class="note"><strong>If you find a security problem</strong>
+  Please do not post the details in public. Email <a href="mailto:contact@comutability.org">contact@comutability.org</a> and say only that you have a report to make. Ordinary email is not end-to-end encrypted, so a person will arrange a private way to receive the details.
+</div>
+
+<h2 class="page"><span class="n">16</span>Glossary and where to find things</h2>
+<table class="tight">
+  <tbody>
+    <tr><th style="width:27%">Account key</th><td>The key that is you. It certifies your devices.</td></tr>
+    <tr><th>Canonical JSON</th><td>The single exact way Secure Net writes data, so that signatures check everywhere.</td></tr>
+    <tr><th>Double ratchet</th><td>The method of changing keys with every message and every reply.</td></tr>
+    <tr><th>End-to-end encryption</th><td>Sealing a message on the sender's device so only the recipients' devices can open it.</td></tr>
+    <tr><th>Federation</th><td>Many independently run sites that can talk to each other.</td></tr>
+    <tr><th>Forward secrecy</th><td>Stealing today's keys does not open yesterday's messages.</td></tr>
+    <tr><th>Hybrid</th><td>Using an established method and a quantum-resistant one together, so both must be broken.</td></tr>
+    <tr><th>Key chain</th><td>The signed history of an account's keys.</td></tr>
+    <tr><th>Ledger</th><td>A community's signed, hash-chained history, copied by approved sites.</td></tr>
+    <tr><th>ML-KEM, ML-DSA</th><td>The quantum-resistant methods standardised by NIST for agreeing secrets and for signing.</td></tr>
+    <tr><th>Post-compromise security</th><td>After a break-in, the conversation becomes private again as keys move on.</td></tr>
+    <tr><th>Prekey</th><td>A public key a device leaves with its site so others can start a session while it is offline.</td></tr>
+    <tr><th>Safety number</th><td>A short number two people compare to confirm nobody is in the middle.</td></tr>
+    <tr><th>Signed record</th><td>A kind, a body and a signature: the one envelope for everything signed.</td></tr>
+    <tr><th>Site</th><td>A server that carries messages for its people. Anyone can run one.</td></tr>
+    <tr><th>SNIP</th><td>Secure Net Improvement Proposal: how a change to the protocol is proposed.</td></tr>
+  </tbody>
+</table>
+<h3>Where to find things</h3>
+<table class="tight">
+  <tbody>
+    <tr><th style="width:27%">The code and specification</th><td><a href="https://github.com/Comutability/secure-net">github.com/Comutability/secure-net</a> (specification in <code>spec/</code>, proposals in <code>snips/</code>, tests in <code>test/</code>)</td></tr>
+    <tr><th>The first application</th><td><a href="https://github.com/Comutability/commonveil-rebuild">github.com/Comutability/commonveil-rebuild</a></td></tr>
+    <tr><th>The organisation</th><td><a href="https://comutability.org">comutability.org</a></td></tr>
+    <tr><th>Talk with the community</th><td><a href="https://comutability.org/community">comutability.org/community</a> has an open invitation to the community on Commonveil</td></tr>
+    <tr><th>Email</th><td><a href="mailto:contact@comutability.org">contact@comutability.org</a></td></tr>
+  </tbody>
+</table>
+<p class="small" style="margin-top:4mm">Secure Net and this guide are published by Comutability, an independent, community-led, AI-assisted open-source initiative. Comutability has not been set up as a company, charity or other legal entity. Built together. Open to everyone.</p>
+
+</body>
+</html>
