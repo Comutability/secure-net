@@ -1,14 +1,15 @@
 {
   "implementation": "Secure Net (reference implementation)",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "source": "https://github.com/Comutability/secure-net",
   "licence": "AGPL-3.0-only",
-  "release": "0.5.0",
+  "release": "0.6.0",
   "profiles": [
     "core",
     "messaging",
     "site",
     "social",
+    "groups",
     "community",
     "governance",
     "extensions",
@@ -91,8 +92,10 @@
         "receive"
       ],
       "vectors": [
-        "cvp-016-v1.json"
-      ]
+        "cvp-016-v1.json",
+        "cvp-016-v2.json"
+      ],
+      "note": "Versions 1 and 2; version 1 is accepted and no longer started where the peer speaks 2"
     },
     "CVP-017": {
       "roles": [
@@ -118,7 +121,8 @@
         "receive"
       ],
       "vectors": [
-        "cvp-019-v1.json"
+        "cvp-019-v1.json",
+        "cvp-019-v2.json"
       ],
       "note": "Client and site rules; the reference site is in memory and doesn't seal between sites (CVP-015), which real sites must"
     },
@@ -139,6 +143,13 @@
       "vectors": [
         "cvp-021-v1.json"
       ]
+    },
+    "CVP-022": {
+      "roles": [
+        "send",
+        "receive"
+      ],
+      "note": "Through the ts-mls library (optional dependency), which states it has had no formal security audit"
     }
   },
   "features": {
@@ -146,19 +157,20 @@
     "cvp.sealed-relay": 1,
     "cvp.pq-signatures": 1,
     "cvp.identity": 2,
-    "cvp.sessions": 1,
+    "cvp.sessions": 2,
+    "cvp.actors": 1,
+    "cvp.activities": 1,
+    "cvp.delivery": 2,
+    "cvp.groups": 1,
+    "cvp.repos": 1,
+    "cvp.lexicons": 1,
     "cvp.envelope": 1,
     "cvp.commons-ledger": 1,
     "cvp.governance": 1,
     "cvp.tokens": 1,
     "cvp.personas": 1,
     "cvp.consent": 1,
-    "cvp.extensions": 1,
-    "cvp.actors": 1,
-    "cvp.activities": 1,
-    "cvp.delivery": 1,
-    "cvp.repos": 1,
-    "cvp.lexicons": 1
+    "cvp.extensions": 1
   },
   "deviations": [],
   "tested": {

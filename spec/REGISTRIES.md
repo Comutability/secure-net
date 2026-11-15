@@ -3,7 +3,7 @@
 Generated from [`registry.json`](registry.json) by `node scripts/standards.mjs --write`. Don't edit this
 file: change `registry.json` through a SNIP (CVP-000, section 7), then regenerate it.
 
-Release 0.5.0.
+Release 0.6.0.
 
 ## Features
 
@@ -13,7 +13,7 @@ Release 0.5.0.
 | `cvp.sealed-relay` | 1 | [CVP-015](CVP-015-quantum-resistance.md) |  |
 | `cvp.pq-signatures` | 1 | [CVP-015](CVP-015-quantum-resistance.md) |  |
 | `cvp.identity` | 2 | CVP-001 |  |
-| `cvp.sessions` | 1 | [CVP-016](CVP-016-sessions.md) |  |
+| `cvp.sessions` | 2 | [CVP-016](CVP-016-sessions.md) | 2: bound prekeys, hidden sender, encrypted headers, sparse ML-KEM. Version 1 is deprecated from 0.6.0: still accepted, not started where the peer speaks 2 |
 | `cvp.envelope` | 1 | CVP-003 |  |
 | `cvp.commons-ledger` | 1 | [CVP-011](CVP-011-commons-ledger.md) |  |
 | `cvp.governance` | 1 | [CVP-012](CVP-012-governance.md) |  |
@@ -23,7 +23,8 @@ Release 0.5.0.
 | `cvp.extensions` | 1 | CVP-008 |  |
 | `cvp.actors` | 1 | [CVP-017](CVP-017-actors.md) |  |
 | `cvp.activities` | 1 | [CVP-018](CVP-018-activities.md) |  |
-| `cvp.delivery` | 1 | [CVP-019](CVP-019-delivery.md) |  |
+| `cvp.delivery` | 2 | [CVP-019](CVP-019-delivery.md) | 2: version 2 direct envelopes without a session tag, sealed sending, unsigned direct activities, group envelopes |
+| `cvp.groups` | 1 | [CVP-022](CVP-022-groups.md) |  |
 | `cvp.repos` | 1 | [CVP-020](CVP-020-repositories.md) |  |
 | `cvp.lexicons` | 1 | [CVP-021](CVP-021-lexicons.md) |  |
 
@@ -46,6 +47,7 @@ Signed with the label `secure-net/<kind>/v1` (CVP-002).
 | `debate.round` | [CVP-012](CVP-012-governance.md) |  |
 | `extension.manifest` | CVP-008 |  |
 | `governance.motion` | [CVP-012](CVP-012-governance.md) |  |
+| `group.credential` | [CVP-022](CVP-022-groups.md) |  |
 | `identity.migration` | CVP-001 |  |
 | `identity.persona-link` | CVP-001 |  |
 | `lexicon.schema` | [CVP-021](CVP-021-lexicons.md) |  |
@@ -168,8 +170,9 @@ ActivityStreams 2.0 names (CVP-018), carried as plain canonical JSON rather than
 | Envelope mode | Part | What a site can read |
 | --- | --- | --- |
 | `public` | [CVP-019](CVP-019-delivery.md) | signed, readable |
-| `direct` | [CVP-019](CVP-019-delivery.md) | CVP-016 session to one device |
+| `direct` | [CVP-019](CVP-019-delivery.md) | CVP-016 session to one device; version 2 shows a site the recipient device only |
 | `audience` | [CVP-019](CVP-019-delivery.md) | CVP-016 sender key, one ciphertext for an audience |
+| `group` | [CVP-019](CVP-019-delivery.md) | one MLS private message (CVP-022); a site sees the group id and sizes |
 
 | Lexicon field type | Part |
 | --- | --- |
@@ -213,6 +216,11 @@ a change means a new version (CVP-000, 4.4). `<...>` marks a variable part.
 | `secure-net/session/v1/history/<i>` | per-chunk key derivation | [CVP-016](CVP-016-sessions.md) |  |
 | `secure-net/session/v1/link` | link code | [CVP-016](CVP-016-sessions.md) |  |
 | `secure-net/session/v1/safety` | safety number | [CVP-016](CVP-016-sessions.md) |  |
+| `secure-net/session/v2/transcript` | version 2 handshake transcript hash | [CVP-016](CVP-016-sessions.md) |  |
+| `secure-net/session/v2/handshake` | version 2 handshake HKDF info (followed by the transcript hash) | [CVP-016](CVP-016-sessions.md) |  |
+| `secure-net/session/v2/identity` | HKDF info for the key that hides the initiator's identity in a first message | [CVP-016](CVP-016-sessions.md) |  |
+| `secure-net/session/v2/root` | version 2 root chain HKDF info (96 bytes out: root key, chain key, next header key) | [CVP-016](CVP-016-sessions.md) |  |
+| `secure-net/session/v2/message` | version 2 message key HKDF info | [CVP-016](CVP-016-sessions.md) |  |
 | `commonveil-request/v1` | first line of a site request's signature base | CVP-005 |  |
 | `commonveil/<context>` | older canonical signing contexts | CVP-001 |  |
 | `commonveil/content/v1` | older envelope content binding | CVP-003 |  |
@@ -238,6 +246,7 @@ a change means a new version (CVP-000, 4.4). `<...>` marks a variable part.
 | `commonveil/ratchet/v1` | community key ratchet | CVP-003 |  |
 | `commonveil/server-content/v1` | community content binding | CVP-003 |  |
 | `secure-net/social/v1/session` | session tag on direct envelopes (SHA-256 of this label, a newline and the session's handshake hash) | [CVP-019](CVP-019-delivery.md) |  |
+| `secure-net/social/v2/delivery-token` | delivery-token verifier a site stores (SHA-256 of this label, a newline and the 32-byte token) | [CVP-019](CVP-019-delivery.md) |  |
 | `secure-net/repo/v1/leaf` | Merkle leaf hash prefix (followed by a newline and the record id) | [CVP-020](CVP-020-repositories.md) |  |
 | `secure-net/repo/v1/node` | Merkle node hash prefix (followed by a newline and the two child hashes) | [CVP-020](CVP-020-repositories.md) |  |
 | `secure-net/repo/v1/empty` | root of an empty repository | [CVP-020](CVP-020-repositories.md) |  |
@@ -272,6 +281,9 @@ Defaults; a site may list others in its site document, except the site document 
 | repo | `/cvp/v2/repo/{actor}` | [CVP-020](CVP-020-repositories.md) |  |
 | changes | `/cvp/v2/changes` | [CVP-020](CVP-020-repositories.md) |  |
 | lexicon | `/cvp/v2/lexicon/{id}` | [CVP-021](CVP-021-lexicons.md) |  |
+| sealed | `/cvp/v2/sealed` | [CVP-019](CVP-019-delivery.md) |  |
+| delivery_token | `/cvp/v2/delivery-token` | [CVP-019](CVP-019-delivery.md) |  |
+| key_packages | `/cvp/v2/key-packages/{actor}/{device}` | [CVP-022](CVP-022-groups.md) |  |
 
 ## HTTP headers
 
@@ -301,3 +313,4 @@ What each profile requires is in [CVP-010](CVP-010-conformance.md).
 | `extensions` | Extensions and consent | [CVP-002](CVP-002-signed-records.md), CVP-008, CVP-014 | Hosts that run extensions or honour consent capsules |
 | `commonveil-compatible` | Commonveil-compatible (older) | CVP-001, [CVP-002](CVP-002-signed-records.md), CVP-003, CVP-005 | Talking to today's Commonveil sites, before they move to CVP-016 |
 | `social` | Social network site or app | [CVP-002](CVP-002-signed-records.md), CVP-005, [CVP-015](CVP-015-quantum-resistance.md), [CVP-016](CVP-016-sessions.md), [CVP-017](CVP-017-actors.md), [CVP-018](CVP-018-activities.md), [CVP-019](CVP-019-delivery.md), [CVP-020](CVP-020-repositories.md), [CVP-021](CVP-021-lexicons.md) | Federated social networking, end to end encrypted, with portable accounts and verifiable public data |
+| `groups` | Groups | [CVP-002](CVP-002-signed-records.md), [CVP-016](CVP-016-sessions.md), [CVP-017](CVP-017-actors.md), [CVP-018](CVP-018-activities.md), [CVP-019](CVP-019-delivery.md), [CVP-022](CVP-022-groups.md) | Apps with group conversations that lock out removed or compromised members (needs an MLS library) |

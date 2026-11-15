@@ -7,13 +7,16 @@ else that wants to talk to Commonveil sites, or to build its own network the sam
 It's plain JavaScript (ES modules) with four small, audited dependencies (`@noble/curves`,
 `@noble/hashes`, `@noble/post-quantum`, `@scure/bip39`). It runs in browsers, Node.js 20+ and
 Deno, and needs no particular backend, database or host.
+Groups (`groups/*`) need two more, installed only if you use them: `ts-mls` and
+`@hpke/hybridkem-x-wing`. `ts-mls` has had no formal security audit.
 
 ## What's in it
 
 | Module | What it does | Spec |
 | --- | --- | --- |
-| `session/*` | **End-to-end messaging, post-quantum.** A handshake and double ratchet built on X25519 and ML-KEM-768 together, Ed25519 + ML-DSA-65 keys, several devices per person, groups, and moving history to a new device. Draft: awaiting human cryptographic review. | CVP-016 |
-| `social/*` | **A federated social protocol, end to end encrypted.** ActivityPub's vocabulary (actors, Create, Follow, Like) and the AT Protocol's portability (key-based identity, moving between sites, signed repositories, lexicons), with followers-only posts, groups and direct messages sealed on devices and quantum-resistant throughout. Draft: awaiting human review. | CVP-017 to CVP-021 |
+| `session/*` | **End-to-end messaging, post-quantum.** A handshake and double ratchet built on X25519 and ML-KEM-768 together, Ed25519 + ML-DSA-65 keys, several devices per person, sender keys for audiences, and moving history to a new device. Version 2 hides who starts a session, encrypts headers and sends ML-KEM in pieces (messages of about 0.4 KB instead of 3.1 KB). Draft: awaiting human cryptographic review. | CVP-016 |
+| `social/*` | **A federated social protocol, end to end encrypted.** ActivityPub's vocabulary (actors, Create, Follow, Like) and the AT Protocol's portability (key-based identity, moving between sites, signed repositories, lexicons), with followers-only posts and direct messages sealed on devices and quantum-resistant throughout. Direct messages are unsigned (deniable) and, once two people have spoken, sent sealed so neither site learns who wrote them. Draft: awaiting human review. | CVP-017 to CVP-021 |
+| `groups/*` | **Groups on MLS (RFC 9420), hybrid post-quantum.** One commit locks out a removed or compromised member for everyone. Needs the optional `ts-mls` library, which has had no formal security audit. Draft: awaiting human review. | CVP-022 |
 | `core/canonical`, `core/signed` | One byte-exact encoding for everything signed, and the signed-record envelope every other module uses. | CVP-002 |
 | `crypto/*` | Account key chains, device certificates, end-to-end envelopes, post-quantum hybrid sealing, recovery phrases, community keys. The same code Commonveil runs. | CVP-001, CVP-003 |
 | `wire/federation`, `wire/features` | How sites sign requests to each other, which addresses they may connect to, and how two sites agree on features. | CVP-005, CVP-008 |

@@ -1,0 +1,29 @@
+[package]
+name = "secure-net-core"
+version = "0.1.0"
+description = "Secure Net in Rust: canonical JSON, signed records and end-to-end sessions, checked against the JavaScript reference's test vectors."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+ed25519-dalek = { version = "3", features = ["rand_core"] }
+x25519-dalek = { version = "3", features = ["static_secrets"] }
+ml-kem = { version = "0.3", features = ["hazmat"] }
+ml-dsa = "0.1"
+sha2 = "0.11"
+hmac = "0.13"
+hkdf = "0.13"
+aes-gcm = "0.11"
+base64 = "0.23"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+getrandom = "0.4"
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+getrandom = { version = "0.4", features = ["wasm_js"] }
+
+[dev-dependencies]
+hex = "0.4"

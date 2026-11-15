@@ -5,7 +5,9 @@
 //   cvp-016-v1.json  every derivation in the session protocol
 //   cvp-017-v1.json  actor documents
 //   cvp-018-v1.json  activities: valid and invalid vocabulary, a signed activity
+//   cvp-016-v2.json  every derivation in version 2 of the session protocol
 //   cvp-019-v1.json  envelopes, delivery bodies and session tags
+//   cvp-019-v2.json  version 2 envelopes, sealed deliveries and delivery-token verifiers
 //   cvp-020-v1.json  repository Merkle roots, proofs and a commit
 //   cvp-021-v1.json  a lexicon and objects judged against it
 //
@@ -26,7 +28,8 @@ import { b64u, fromB64u } from "../src/core/bytes.js";
 import { verifyActorDocument } from "../src/social/actor.js";
 import { verifyActivity } from "../src/social/activity.js";
 import { activityProblems } from "../src/social/vocabulary.js";
-import { envelopeProblems, sessionTag, readDeliveryBody } from "../src/social/delivery.js";
+import { envelopeProblems, sessionTag, readDeliveryBody, deliveryVerifier, readSealedBody } from "../src/social/delivery.js";
+import * as v2 from "../src/session/v2.js";
 import { merkleRoot, inclusionProof, verifyInclusion, verifyRepo } from "../src/social/repo.js";
 import { verifyLexicon, extensionProblems, authorityOf } from "../src/social/lexicon.js";
 
@@ -34,9 +37,11 @@ const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..")
 const files = {
   "cvp-002-v1.json": () => signedRecordVectors(),
   "cvp-016-v1.json": () => vectors(),
+  "cvp-016-v2.json": () => vectors2(),
   "cvp-017-v1.json": () => socialVectors().then((v) => v.actors),
   "cvp-018-v1.json": () => socialVectors().then((v) => v.activities),
   "cvp-019-v1.json": () => socialVectors().then((v) => v.delivery),
+  "cvp-019-v2.json": () => deliveryVectors2(),
   "cvp-020-v1.json": () => socialVectors().then((v) => v.repos),
   "cvp-021-v1.json": () => socialVectors().then((v) => v.lexicons),
 };
@@ -74,6 +79,78 @@ export async function vectors() {
 
 
 /** CVP-002: canonical JSON, and signed records with a classical and a quantum-resistant key. */
+export async function vectors2() {
+  const d = v2.derive;
+  const who = (n) => ({ account: n, device: `${n}1`, sign: `${n}s`, dh: `${n}d` });
+  const x = { ek: b64u(seq(0x01)), ct: b64u(seq(0x02, 64)), signed: "s", pq: "p", oneTime: "o" };
+  const keys = { signed: b64u(seq(0x03)), pq: b64u(seq(0x04, 64)), oneTime: b64u(seq(0x05)) };
+  const transcript = v2.transcriptOf(who("A"), who("B"), x, keys);
+  const th = d.transcriptHash(transcript);
+  const dhs = [seq(0x10), seq(0x30), seq(0x50), seq(0x70)];
+  const ss = seq(0x90);
+  const hs = d.handshakeKeys(dhs, ss, th);
+  const hs3 = d.handshakeKeys(dhs.slice(0, 3), ss, th);
+  const out3 = (k) => ({ rootKey: hex(k.rk), chainKey: hex(k.ck), nextHeaderKey: hex(k.nhk) });
+  const mk = d.messageKey(seq(0x60));
+  const idk = d.identityKey([seq(0x50), seq(0x70)], ss, x);
+  const header = { dh: b64u(seq(0x21)), n: 3, pn: 2, pe: 1, k: { e: 2, t: "ek", i: 0, d: b64u(seq(0x00, 4)) } };
+  return {
+    description: "CVP-016 session protocol, version 2. All byte strings are hex unless they sit inside JSON the protocol itself defines. seq(s, n) means the n bytes s, s+1, s+2, ... (mod 256). X25519, ML-KEM-768 and the chain KDF are as in cvp-016-v1.json.",
+    transcript: { initiator: who("A"), responder: who("B"), x, prekeyPublicKeys: keys, object: transcript, canonical: canonicalJson(transcript), hash: hex(th) },
+    handshake: { dh: dhs.map(hex), mlkem: hex(ss), transcriptHash: hex(th), rootKey: hex(hs.rk), initiatorHeaderKey: hex(hs.hka), responderNextHeaderKey: hex(hs.nhkb), threeDh: { rootKey: hex(hs3.rk), initiatorHeaderKey: hex(hs3.hka), responderNextHeaderKey: hex(hs3.nhkb) } },
+    identityKey: { dh: [hex(seq(0x50)), hex(seq(0x70))], mlkem: hex(ss), x, key: hex(idk.key), iv: hex(idk.iv) },
+    root: { rootKey: hex(seq(0x00)), dh: hex(seq(0x20)), withoutMlkem: out3(d.kdfRoot2(seq(0x00), seq(0x20))), mlkem: hex(seq(0x40)), withMlkem: out3(d.kdfRoot2(seq(0x00), seq(0x20), seq(0x40))) },
+    message: { messageKey: hex(seq(0x60)), key: hex(mk.key), iv: hex(mk.iv) },
+    header: { object: header, canonical: canonicalJson(header), note: "Encrypted with AES-256-GCM under the header key, a random 12-byte IV in front, the transcript hash as associated data." },
+    pieces: { chunk: v2.CHUNK, encapsulationKey: { bytes: 1184, pieces: d.pieces(1184), last: 1184 - v2.CHUNK * (d.pieces(1184) - 1) }, ciphertext: { bytes: 1088, pieces: d.pieces(1088), last: 1088 - v2.CHUNK * (d.pieces(1088) - 1) } },
+    limits: { maxSkip: v2.MAX_SKIP, maxStored: v2.MAX_STORED, skippedTtlMs: v2.SKIPPED_TTL_MS },
+  };
+}
+
+export async function deliveryVectors2() {
+  const token = b64u(seq(0x11));
+  const to = "A".repeat(22);
+  const device = "B".repeat(22);
+  const direct = { v: 2, mode: "direct", device, message: { v: 2, h: "AAAA", c: "AAAA" } };
+  const group = { v: 2, mode: "group", group: `group:${"g".repeat(16)}`, message: "AAAA" };
+  const judge = (envelope) => ({ envelope, problems: envelopeProblems(envelope).length });
+  const sealed = (body) => {
+    try {
+      readSealedBody(body);
+      return { body, accepted: true };
+    } catch (e) {
+      return { body, accepted: false, code: e.code };
+    }
+  };
+  return {
+    description: "CVP-019 delivery, version 2. `problems` is how many problems a conforming implementation finds (0 means well formed); `accepted` is whether a sealed delivery body is well formed (the token is then checked against the recipient's verifiers).",
+    deliveryToken: { token, verifier: deliveryVerifier(token), note: "verifier = base64url(SHA-256(\"secure-net/social/v2/delivery-token\\n\" || the 32 token bytes))" },
+    envelopes: [
+      judge(direct),
+      judge({ ...direct, message: { ...direct.message, x: { ek: "AAAA" } } }),
+      judge(group),
+      judge({ ...direct, session: "C".repeat(22) }),
+      judge({ ...direct, from: to }),
+      judge({ ...direct, message: { ...direct.message, n: 1 } }),
+      judge({ ...direct, message: { v: 1, c: "AAAA" } }),
+      judge({ ...group, group: "not-a-group" }),
+      judge({ ...group, message: { c: "AAAA" } }),
+      judge({ v: 2, mode: "audience", audience: `${to}:${"x".repeat(16)}`, message: {} }),
+      judge({ v: 2, mode: "public", activity: {} }),
+      judge({ v: 1, mode: "group", group: group.group, message: "AAAA" }),
+    ],
+    sealed: [
+      sealed({ v: 1, items: [{ to, envelope: direct, token }] }),
+      sealed({ v: 1, items: [{ to, envelope: group, token }] }),
+      sealed({ v: 1, items: [{ to, envelope: direct, token, from: to }] }),
+      sealed({ v: 1, items: [{ to, envelope: direct, token: "short" }] }),
+      sealed({ v: 1, items: [{ to, envelope: { v: 1, mode: "direct", device, session: "C".repeat(22), message: { v: 1, c: "AAAA" } }, token }] }),
+      sealed({ v: 1, items: [] }),
+      sealed({ v: 2, items: [{ to, envelope: direct, token }] }),
+    ],
+  };
+}
+
 export async function signedRecordVectors() {
   const canonical = [
     { name: "keys sorted by UTF-16 code unit, no whitespace", json: '{"z":1,"a":[3,2,1],"B":{"y":null,"x":true}}' },

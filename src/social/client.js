@@ -6,17 +6,23 @@
 // follow, pins actors on first contact, and keeps everything in memory.
 import { createAccount, createDevice, signDeviceList, createPrekeys } from "../session/keys.js";
 import { initiate, respond, decrypt, isInitial, initialSender, handshakeId } from "../session/session.js";
+import * as v2 from "../session/v2.js";
 import { SessionError } from "../session/primitives.js";
 import { createActorDocument, verifyActorDocument, parseHandle, actorIdOf } from "./actor.js";
-import { signActivity, verifyActivity } from "./activity.js";
-import { publicEnvelope, sealDirect, openDirectPayload, createAudience, addMembers, removeMembers, sealToAudience, openAudience, viewKey, sessionTag } from "./delivery.js";
+import { signActivity, verifyActivity, sessionActivity, verifySessionActivity } from "./activity.js";
+import { publicEnvelope, sealDirect, openDirectPayload, createAudience, addMembers, removeMembers, sealToAudience, openAudience, viewKey, sessionTag, newDeliveryToken, deliveryVerifier, sealedBody } from "./delivery.js";
 import { PUBLIC, FOLLOWERS, isActorId } from "./vocabulary.js";
 import { createRepo, appendToRepo, exportRepo } from "./repo.js";
 
 const text = (b) => new TextDecoder().decode(b);
 
 export class SocialClient {
-  constructor({ handle, network, type = "Person", name }) {
+  /**
+   * sessions: the highest CVP-016 version this client starts (2 by default; 1 behaves as a client
+   * from before version 2). deniable: whether direct activities go unsigned over version 2
+   * sessions (policy: on, as Signal does; turn it off to be able to prove what you were sent).
+   */
+  constructor({ handle, network, type = "Person", name, sessions = 2, deniable = true }) {
     const h = parseHandle(handle);
     if (!h) throw new SessionError("BAD_INPUT", "A handle looks like name@host");
     this.handle = h.handle;
@@ -42,6 +48,12 @@ export class SocialClient {
     this.likes = new Map(); // object id -> Set of actor ids
     this.repo = createRepo(this.id); // our public activities, signed as a set (CVP-020)
     this.actorSent = new Map(); // actor id -> seq of our actor document they've been sent
+    this.maxSessions = sessions;
+    this.deniable = deniable;
+    this.token = sessions >= 2 ? newDeliveryToken() : null; // our delivery token, given to the people we talk to
+    this.tokenSent = new Set(); // actor ids who have our current token
+    this.tokens = new Map(); // actor id -> their delivery token
+    this.peerVersion = new Map(); // peer device kid -> highest session version seen from it
   }
 
   /** Publish the actor document and prekeys to our site. */
@@ -49,9 +61,10 @@ export class SocialClient {
     this.seq += 1;
     this.actorRecord = createActorDocument(this.account, { handle: this.handle, type: this.type, name: this.name, devices: this.deviceList, seq: this.seq });
     this.site.publishActor(this.actorRecord);
-    const { secrets, published } = createPrekeys(this.device, { oneTime: 10, pqOneTime: 10 });
+    const { secrets, published } = createPrekeys(this.device, { oneTime: 10, pqOneTime: 10, sessions: this.maxSessions });
     this.prekeys = secrets;
     this.site.publishPrekeys(this.id, this.device.kid, published);
+    if (this.token) this.site.setDeliveryVerifiers(this.id, [deliveryVerifier(this.token)]);
     this.remember(this.actorRecord);
     return this;
   }
@@ -87,28 +100,91 @@ export class SocialClient {
   }
 
   /** Sessions with every device of an actor, starting any that are missing. */
-  sessionsFor(actorId) {
+  async sessionsFor(actorId) {
     const actor = this.known.get(actorId);
     const out = {};
     for (const d of actor.devices.body.devices) {
       if (d.kid === this.device.kid) continue;
       if (!this.sessions[d.kid]) {
         const bundle = this.network.site(this.hostOf(actorId)).bundle(actorId, d.kid);
-        this.sessions[d.kid] = initiate({ me: { device: this.device, deviceList: this.deviceList }, bundle, accountKey: actor.account, minSeq: actor.devices.body.seq });
-        this.byTag.set(sessionTag(this.sessions[d.kid]), d.kid);
+        const me = { device: this.device, deviceList: this.deviceList };
+        const args = { me, bundle, accountKey: actor.account, minSeq: actor.devices.body.seq };
+        // The version a device speaks is in its signed prekey, so a site can't talk us down by
+        // editing it; and once a device has spoken version 2 we never go back to 1 with it.
+        const theirs = Math.min(this.maxSessions, sessionVersionOf(bundle));
+        if (theirs < (this.peerVersion.get(d.kid) || 1)) throw new SessionError("DOWNGRADE", "That device spoke a newer session version before");
+        if (theirs >= 2) this.sessions[d.kid] = await v2.initiate(args);
+        else {
+          this.sessions[d.kid] = initiate(args);
+          this.byTag.set(sessionTag(this.sessions[d.kid]), d.kid);
+        }
+        this.peerVersion.set(d.kid, theirs);
       }
       out[d.kid] = this.sessions[d.kid];
     }
     return out;
   }
 
+  /**
+   * An activity that will only ever travel in direct envelopes to these actors: unsigned if this
+   * client is set to deniable and every session involved is version 2, signed otherwise.
+   */
+  async direct(recipients, activity) {
+    let all2 = this.deniable;
+    for (const a of recipients) all2 = Object.values(await this.sessionsFor(a)).every((st) => st.v === 2) && all2;
+    return all2 ? sessionActivity(this.device, this.id, activity) : this.sign(activity, { encrypted: true });
+  }
+
+  /** Send a payload to every device of an actor. */
   async sendDirect(actorId, payload) {
+    const sessions = await this.sessionsFor(actorId);
+    const all2 = Object.values(sessions).every((st) => st.v === 2);
+    const out = { ...payload };
     // Our actor document goes along the first time, and again only when it has changed.
-    const sendActor = this.actorSent.get(actorId) !== this.actorRecord.body.seq;
-    const { sessions, items } = await sealDirect(this.sessionsFor(actorId), { ...(sendActor ? { actor: this.actorRecord } : {}), ...payload });
+    if (this.actorSent.get(actorId) !== this.actorRecord.body.seq) out.actor = this.actorRecord;
+    // So does our delivery token, so they can write back without their site or ours learning who.
+    if (all2 && this.token && !this.tokenSent.has(actorId)) out.delivery = this.token;
+    // Sealed sending needs their token and sessions they have already answered: a first message
+    // goes through our site, which vouches for it (CVP-019, "Sealed sending").
+    const sealedOk = all2 && Object.values(sessions).every((st) => !st.pending);
+    const { sessions: next, items } = await sealDirect(sessions, out);
     this.actorSent.set(actorId, this.actorRecord.body.seq);
-    Object.assign(this.sessions, sessions);
-    await this.site.send(this.id, items.map((it) => ({ ...it, host: this.hostOf(it.to) })));
+    if (out.delivery) this.tokenSent.add(actorId);
+    Object.assign(this.sessions, next);
+    return this.deliver(actorId, items.map((it) => it.envelope), { sealed: sealedOk });
+  }
+
+  /**
+   * Send envelopes that need no sender (version 2 direct, or group) to one actor: sealed, straight
+   * to their site, if we hold their delivery token; through our own site otherwise.
+   */
+  async deliver(actorId, envelopes, { sealed = true } = {}) {
+    const host = this.hostOf(actorId);
+    const token = this.tokens.get(actorId);
+    if (sealed && token) {
+      try {
+        this.network.site(host).receiveSealed(this.network.record({ sealed: true, to: host, body: sealedBody(envelopes.map((envelope) => ({ to: actorId, envelope, token }))) }).body);
+        return "sealed";
+      } catch (e) {
+        if (e.code !== "UNTRUSTED") throw e;
+        this.tokens.delete(actorId);
+      }
+    }
+    await this.site.send(this.id, envelopes.map((envelope) => ({ host, to: actorId, envelope })));
+    return "site";
+  }
+
+  /** Process an activity that another module has already authenticated (groups). */
+  handleActivity(body, how) {
+    return this.#handle(body, how);
+  }
+
+  /** Replace our delivery token (to cut off someone who has it). People we talk to get the new one with our next message. */
+  rotateDeliveryToken() {
+    const old = this.token;
+    this.token = newDeliveryToken();
+    this.tokenSent.clear();
+    this.site.setDeliveryVerifiers(this.id, [deliveryVerifier(this.token), deliveryVerifier(old)]);
   }
 
   sign(activity, { encrypted }) {
@@ -143,7 +219,7 @@ export class SocialClient {
       return record;
     }
     if (!Array.isArray(to) || !to.every(isActorId)) throw new SessionError("BAD_INPUT", "to must be public, followers or a list of actor ids");
-    const record = this.sign({ type: "Create", to, object }, { encrypted: true });
+    const record = await this.direct(to, { type: "Create", to, object });
     for (const a of to) await this.sendDirect(a, { activity: record });
     return record;
   }
@@ -169,13 +245,13 @@ export class SocialClient {
     this.site = to;
     this.remember(this.actorRecord);
     for (const a of new Set([...this.followerIds(), ...this.following])) {
-      await this.sendDirect(a, { activity: this.sign({ type: "Update", to: [a], object: { type: this.type, id: this.id } }, { encrypted: true }) });
+      await this.sendDirect(a, { activity: await this.direct([a], { type: "Update", to: [a], object: { type: this.type, id: this.id } }) });
     }
   }
 
   async follow(handle) {
     const target = this.lookup(handle);
-    const record = this.sign({ type: "Follow", to: [target.id], object: target.id }, { encrypted: true });
+    const record = await this.direct([target.id], { type: "Follow", to: [target.id], object: target.id });
     this.pending.set(record.body.id, target.id);
     await this.sendDirect(target.id, { activity: record });
   }
@@ -184,11 +260,11 @@ export class SocialClient {
     const follow = [...this.pending.entries()].find(([, a]) => a === actorId)?.[0];
     this.following.delete(actorId);
     if (!follow) return;
-    await this.sendDirect(actorId, { activity: this.sign({ type: "Undo", to: [actorId], object: follow }, { encrypted: true }) });
+    await this.sendDirect(actorId, { activity: await this.direct([actorId], { type: "Undo", to: [actorId], object: follow }) });
   }
 
   async like(objectId, authorId) {
-    await this.sendDirect(authorId, { activity: this.sign({ type: "Like", to: [authorId], object: objectId }, { encrypted: true }) });
+    await this.sendDirect(authorId, { activity: await this.direct([authorId], { type: "Like", to: [authorId], object: objectId }) });
   }
 
   /** Stop someone reading our followers-only posts: remove them and give everyone else a new key. */
@@ -226,12 +302,31 @@ export class SocialClient {
       this.views.set(key, next);
       return this.#handle(verifyActivity(activity, this.known.get(activity.body.actor), { encrypted: true }), "followers");
     }
+    if (env.mode === "group") {
+      // Groups (CVP-022) live in their own module, which needs an MLS library: see groups/client.js.
+      if (!this.onGroupEnvelope) return { kind: "unreadable", reason: "this client doesn't do groups" };
+      return this.onGroupEnvelope(env);
+    }
     // direct
     if (env.device !== this.device.kid) return null;
+    const { peer, plaintext, version } = env.v === 2 ? await this.#openDirect2(env) : await this.#openDirect1(env);
+    const state = this.sessions[peer];
+    const fromActor = actorIdOf(state.peer.account);
+    const p = openDirectPayload(plaintext, { fromDevice: peer, fromActor, version });
+    if (p.actor) this.remember(p.actor);
+    if (p.delivery) this.tokens.set(fromActor, p.delivery);
+    for (const v of p.senderKeys) this.views.set(viewKey(v.group, v.id), v);
+    for (const g of p.groups) await this.onWelcome?.(g, fromActor);
+    if (p.unsigned) return this.#handle(verifySessionActivity(p.unsigned, this.known.get(fromActor), { fromDevice: peer }), "direct", { deniable: true });
+    if (!p.activity) return { kind: "keys", from: fromActor };
+    return this.#handle(verifyActivity(p.activity, this.known.get(fromActor), { encrypted: true }), "direct");
+  }
+
+  async #openDirect1(env) {
     let peer = this.byTag.get(env.session);
-    let plaintext;
     if (!peer && isInitial(env.message)) {
       const who = initialSender(env.message);
+      if ((this.peerVersion.get(who.device) || 1) > 1) throw new SessionError("DOWNGRADE", "That device spoke a newer session version before");
       if (this.handshakes.has(who.handshake)) throw new SessionError("REPLAY", "First message already received");
       const r = await respond({ me: { device: this.device, deviceList: this.deviceList, prekeys: this.prekeys }, message: env.message, accountKey: who.account }); // trust on first use: policy
       this.handshakes.add(handshakeId(env.message));
@@ -239,29 +334,43 @@ export class SocialClient {
       peer = r.state.peer.device;
       this.sessions[peer] = r.state;
       this.byTag.set(sessionTag(r.state), peer);
-      plaintext = r.plaintext;
-    } else {
-      if (!peer) throw new SessionError("UNKNOWN_SESSION", "No session for that tag");
-      const r = await decrypt(this.sessions[peer], env.message);
-      this.sessions[peer] = r.state;
-      plaintext = r.plaintext;
+      return { peer, plaintext: r.plaintext, version: 1 };
     }
-    const state = this.sessions[peer];
-    const fromActor = actorIdOf(state.peer.account);
-    const p = openDirectPayload(plaintext, { fromDevice: peer, fromActor });
-    if (p.actor) this.remember(p.actor);
-    for (const v of p.senderKeys) this.views.set(viewKey(v.group, v.id), v);
-    if (!p.activity) return { kind: "keys", from: fromActor };
-    return this.#handle(verifyActivity(p.activity, this.known.get(fromActor), { encrypted: true }), "direct");
+    if (!peer) throw new SessionError("UNKNOWN_SESSION", "No session for that tag");
+    const r = await decrypt(this.sessions[peer], env.message);
+    this.sessions[peer] = r.state;
+    return { peer, plaintext: r.plaintext, version: 1 };
   }
 
-  async #handle(a, how) {
+  async #openDirect2(env) {
+    if (this.maxSessions < 2) throw new SessionError("BAD_MESSAGE", "Unsupported message version");
+    // Nothing on the envelope says which session it belongs to: find the one whose header key opens it.
+    for (const [peer, state] of Object.entries(this.sessions)) {
+      if (state.v !== 2 || !(await v2.canOpen(state, env.message))) continue;
+      const r = await v2.decrypt(state, env.message);
+      this.sessions[peer] = r.state;
+      return { peer, plaintext: r.plaintext, version: 2 };
+    }
+    if (!v2.isInitial(env.message)) throw new SessionError("UNKNOWN_SESSION", "No session opens that message");
+    const me = { device: this.device, deviceList: this.deviceList, prekeys: this.prekeys };
+    const who = await v2.initialSender({ me, message: env.message });
+    if (this.handshakes.has(who.handshake)) throw new SessionError("REPLAY", "First message already received");
+    const r = await v2.respond({ me, message: env.message, accountKey: who.account }); // trust on first use: policy
+    this.handshakes.add(who.handshake);
+    this.prekeys = r.prekeys;
+    const peer = r.state.peer.device;
+    this.sessions[peer] = r.state;
+    this.peerVersion.set(peer, 2);
+    return { peer, plaintext: r.plaintext, version: 2 };
+  }
+
+  async #handle(a, how, { deniable = false } = {}) {
     const author = this.known.get(a.actor);
     const who = `@${author.handle}`;
     switch (a.type) {
       case "Create":
-        this.timeline.push({ id: a.object.id, from: who, how, content: a.object.content, type: a.object.type, object: a.object });
-        return { kind: "post", from: who, how, content: a.object.content ?? a.object.name, id: a.object.id, type: a.object.type };
+        this.timeline.push({ id: a.object.id, from: who, how, content: a.object.content, type: a.object.type, object: a.object, deniable });
+        return { kind: "post", from: who, how, content: a.object.content ?? a.object.name, id: a.object.id, type: a.object.type, deniable };
       case "Update":
         return a.object?.id === a.actor ? { kind: "profile-updated", from: who } : { kind: "other", type: a.type, from: who };
       case "Follow": {
@@ -270,7 +379,7 @@ export class SocialClient {
         const devices = author.devices.body.devices.map((d) => ({ actor: a.actor, device: d.kid }));
         const { audience, send } = addMembers(this.followers, devices);
         this.followers = audience;
-        const accept = this.sign({ type: "Accept", to: [a.actor], object: a.id }, { encrypted: true });
+        const accept = await this.direct([a.actor], { type: "Accept", to: [a.actor], object: a.id });
         await this.sendDirect(a.actor, { activity: accept, senderKeys: [send.senderKey] });
         return { kind: "followed-by", from: who };
       }
@@ -292,3 +401,6 @@ export class SocialClient {
     }
   }
 }
+
+/** The highest session version a bundle's device says it speaks (from its signed prekey; verified by initiate). */
+export const sessionVersionOf = (bundle) => (Number.isSafeInteger(bundle?.signed?.body?.sessions) && bundle.signed.body.sessions >= 1 ? bundle.signed.body.sessions : 1);

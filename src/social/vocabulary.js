@@ -35,6 +35,7 @@ const LANG = /^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/;
 
 export const isActorId = (v) => typeof v === "string" && KID.test(v);
 export const isObjectId = (v) => typeof v === "string" && ID.test(v);
+export const isGroupId = (v) => typeof v === "string" && GROUP.test(v);
 /** The actor an object or activity id belongs to. Ids start with their author's actor id. */
 export const ownerOf = (id) => (typeof id === "string" ? ID.exec(id)?.[1] ?? null : null);
 export const isAddress = (v) => v === PUBLIC || v === FOLLOWERS || isActorId(v) || (typeof v === "string" && GROUP.test(v));

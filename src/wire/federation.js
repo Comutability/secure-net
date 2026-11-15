@@ -41,6 +41,9 @@ export const SOCIAL_ENDPOINTS = Object.freeze({
   repo: "/cvp/v2/repo/{actor}",
   changes: "/cvp/v2/changes",
   lexicon: "/cvp/v2/lexicon/{id}",
+  sealed: "/cvp/v2/sealed",
+  key_packages: "/cvp/v2/key-packages/{actor}/{device}",
+  delivery_token: "/cvp/v2/delivery-token",
 });
 
 const ENDPOINT_RE = /^\/[A-Za-z0-9._~{}\/-]{0,199}$/;
