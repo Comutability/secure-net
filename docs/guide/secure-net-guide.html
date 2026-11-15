@@ -195,7 +195,7 @@ svg text { font-family: Inter, Arial, sans-serif; }
   </tbody>
 </table>
 <div class="tech"><strong>For builders</strong>
-  The reference library depends on four small cryptography packages from the noble and scure families (<code>@noble/curves</code>, <code>@noble/hashes</code>, <code>@noble/post-quantum</code>, <code>@scure/bip39</code>) and the platform's WebCrypto for AES-256-GCM. A Rust implementation, compiled to WebAssembly so the same code runs in apps and on servers, is planned; the test vectors in <code>spec/vectors/</code> are what it will be checked against.
+  The reference library depends on four small cryptography packages from the noble and scure families (<code>@noble/curves</code>, <code>@noble/hashes</code>, <code>@noble/post-quantum</code>, <code>@scure/bip39</code>) and the platform's WebCrypto for AES-256-GCM. A Rust implementation, compiled to WebAssembly so the same code runs in apps and on servers, is in progress (pull request 7): it reproduces the test vectors in <code>spec/vectors/</code> and talks to the JavaScript message by message.
 </div>
 
 <h2 class="page"><span class="n">3</span>Keys: who you are</h2>
@@ -241,7 +241,7 @@ svg text { font-family: Inter, Arial, sans-serif; }
   "sig":  { "kid": "Qm3...", "ed": "...", "pq": "..." }   <span class="c">// Ed25519 and ML-DSA-65</span>
 }</code></pre>
 <div class="tech"><strong>For builders</strong>
-  The bytes signed are the UTF-8 of <code>secure-net/&lt;kind&gt;/v1</code>, one newline byte, then the canonical JSON of the body. Putting the kind in front means a signature on one kind of record can never be passed off as another kind. When a key is quantum-resistant, <em>both</em> signatures must be present and both must verify. Verifiers reject unknown members in <code>sig</code> and compare the key id against the key. Canonical JSON is the subset of RFC 8785 (JCS) whose output is identical in every language. Read CVP-002, and check your implementation against <code>spec/vectors/</code>.
+  The bytes signed are the UTF-8 of <code>secure-net/&lt;kind&gt;/v1</code>, one newline byte, then the canonical JSON of the body. Putting the kind in front means a signature on one kind of record can never be passed off as another kind. When a key is quantum-resistant, <em>both</em> signatures must be present and both must verify. Verifiers check that the key id matches the key, and the key, not the signature, decides which signatures are required. Canonical JSON is the subset of RFC 8785 (JCS) whose output is identical in every language. Read CVP-002, and check your implementation against <code>spec/vectors/</code>.
 </div>
 
 <h2><span class="n">5</span>Sites talking to each other</h2>
