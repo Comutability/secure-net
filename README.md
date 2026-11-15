@@ -77,7 +77,10 @@ cargo clippy --all-targets -- -D warnings
 cargo run -p secure-net-tools -- standards   # the standard and the code agree
 cargo run -p secure-net-tools -- manifest    # after any change: updates secure-net.manifest.json
 cargo run -p secure-net-tools -- package     # the npm package (needs the wasm32 target and wasm-bindgen)
+cargo run -p secure-net-tools -- tag         # after a release: tag vX.Y.Z, then git push origin --tags
 ```
+
+Every release is tagged `vX.Y.Z` at the last commit that carried that version.
 
 Commonveil keeps a copy and checks it against `secure-net.manifest.json`, so the two can't drift
 apart unnoticed.
