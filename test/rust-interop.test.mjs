@@ -18,7 +18,8 @@ import * as js from "../src/session/session.js";
 
 const CLI = process.env.SECURE_NET_RUST_CLI || fileURLToPath(new URL("../rust/target/debug/examples/cli", import.meta.url));
 const WASM = process.env.SECURE_NET_RUST_WASM;
-const wasm = WASM ? await import(WASM) : null;
+const loaded = WASM ? await import(WASM) : null;
+const wasm = loaded && (loaded.call ? loaded : loaded.default);
 const skip = wasm || existsSync(CLI) ? false : "the Rust front end isn't built (cd rust && cargo build --example cli)";
 const NOW = 1_800_000_000_000;
 

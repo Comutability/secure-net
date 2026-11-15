@@ -43,4 +43,6 @@ jobs:
           version=$(awk '/name = "wasm-bindgen"/{getline; print $3}' rust/Cargo.lock | tr -d '"')
           cargo install --locked wasm-bindgen-cli --version "$version"
           wasm-bindgen --target nodejs --out-dir rust/pkg-node rust/target/wasm32-unknown-unknown/release/secure_net_wasm.wasm
+          # wasm-bindgen's Node.js output is CommonJS; this repository's package.json says ES modules.
+          echo '{ "type": "commonjs" }' > rust/pkg-node/package.json
           SECURE_NET_RUST_WASM="$PWD/rust/pkg-node/secure_net_wasm.js" node --test test/rust-interop.test.mjs
