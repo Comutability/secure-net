@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | `cvp.actors` (version 1) |
 | Depends on | CVP-002, CVP-016 |
-| Code | `src/social/actor.js` |
+| Code | `rust/secure-net-core/src/social/actor.rs` |
 | Proposed in | [SNIP-0005](../snips/SNIP-0005.md) |
 
 ## Summary
@@ -149,7 +149,7 @@ Recovering an actor whose account key is lost is not part of this version.
 - Every `mustRefuse` record MUST be refused, under the conditions given (`lookup`, `minSeq`).
 
 The keys are made from fixed seeds and listed, so an implementation can rebuild every record.
-Tests: `test/social.test.mjs`.
+Tests: `rust/secure-net-core/tests/social_e2e.rs`, `rust/secure-net-core/tests/social_guards.rs`, `rust/secure-net-core/tests/vectors_social.rs`.
 
 ## Changes
 

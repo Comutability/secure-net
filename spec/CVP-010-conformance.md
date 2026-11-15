@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | none |
 | Depends on | CVP-000 |
-| Code | `test/`, `scripts/vectors.mjs`, `rust/secure-net-tools` |
+| Code | `rust/secure-net-core/tests/`, `rust/secure-net-wasm/tests/`, `rust/secure-net-tools` |
 | Proposed in | [SNIP-0004](../snips/SNIP-0004.md) |
 
 ## Summary
@@ -103,10 +103,11 @@ Comutability does not certify implementations.
 
 ### 5. The reference implementation
 
-The reference implementation (Secure Net) implements every profile above. Its tests (`npm test`)
-cover each part, and CI checks that its vectors and registries match its code
-(`node scripts/vectors.mjs --check`, `cargo run -p secure-net-tools -- standards`). Its statement is
-`secure-net-conformance.json` in the repository root.
+The reference implementation (Secure Net, in Rust since 0.7.0) implements every profile above.
+Its tests (`cargo test`) cover each part and check every file in `spec/vectors`; its WebAssembly
+build is tested under Node.js; and CI checks that its registries match its code
+(`cargo run -p secure-net-tools -- standards`). Its statement is `secure-net-conformance.json` in
+the repository root.
 
 Where a part has no document yet (the registry lists them), the reference code and its tests are
 for now the only definition of that part, so "conforms" can only mean "behaves like the reference".
@@ -115,10 +116,11 @@ Writing those documents is what turns the reference into a standard others can c
 ### 6. Still to do
 
 - **An implementation-independent test runner.** Today the vectors are language-neutral but the
-  behavioural tests are JavaScript. A runner that drives any implementation over HTTP (sites) or a
+  behavioural tests are Rust. A runner that drives any implementation over HTTP (sites) or a
   small command-line adapter (libraries) would let others test themselves the same way.
-- **Vectors for every part.** Only CVP-002 and CVP-016 have them so far; the registry lists which
-  parts are missing theirs.
+- **Vectors for every part.** CVP-002 and CVP-016 to CVP-021 have them so far; the registry lists
+  which parts are missing theirs. New vectors need a Rust generator (the JavaScript vector script
+  that wrote the current ones was removed in 0.7.0).
 - **Interoperability events**: two independent implementations talking to each other in public,
   which is also what moves a part to Stable (CVP-000, 3.2).
 

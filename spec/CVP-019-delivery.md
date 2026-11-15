@@ -6,7 +6,7 @@
 | Version | 2 |
 | Feature | `cvp.delivery` (version 2) |
 | Depends on | CVP-005, CVP-015, CVP-016, CVP-017, CVP-018 |
-| Code | `src/social/delivery.js`, `src/social/site.js` (reference site), `src/social/client.js` (reference client) |
+| Code | `rust/secure-net-core/src/social/delivery.rs`, `rust/secure-net-core/src/social/site.rs` (reference site), `rust/secure-net-core/src/social/client.rs` (reference client) |
 | Proposed in | [SNIP-0005](../snips/SNIP-0005.md); version 2 in [SNIP-0006](../snips/SNIP-0006.md) |
 
 ## Summary
@@ -252,13 +252,13 @@ Other limits:
 valid or invalid as stated; accept `deliveryBody`. The cryptography inside envelopes is CVP-016's,
 with its own vectors.
 
-`examples/social.mjs` runs the whole protocol (two sites, three people: public posts, follows,
+`cargo run --example social` runs the whole protocol (two sites, three people: public posts, follows,
 followers-only posts, a direct message, a like, an unfollow) through a network that keeps
 everything. It then checks that no private text or activity type appears in what the network
-kept, and that the public posts do. Tests: `test/social.test.mjs`.
+kept, and that the public posts do. Tests: `rust/secure-net-core/tests/social_e2e.rs`, `rust/secure-net-core/tests/social_guards.rs`, `rust/secure-net-core/tests/vectors_social.rs`.
 
 Version 2: [`vectors/cvp-019-v2.json`](vectors/cvp-019-v2.json): reproduce the delivery-token
-verifier; judge every envelope and sealed body as stated. Tests: `test/social2.test.mjs`.
+verifier; judge every envelope and sealed body as stated. Tests: `rust/secure-net-core/tests/social_e2e.rs`, `rust/secure-net-core/tests/vectors_social.rs`.
 
 The reference site keeps everything in memory and doesn't seal between sites; real sites MUST.
 

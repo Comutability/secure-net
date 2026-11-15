@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | `cvp.repos` (version 1) |
 | Depends on | CVP-002, CVP-017, CVP-018 |
-| Code | `src/social/repo.js`, `src/social/site.js` (reference site) |
+| Code | `rust/secure-net-core/src/social/repo.rs`, `rust/secure-net-core/src/social/site.rs` (reference site) |
 | Proposed in | [SNIP-0005](../snips/SNIP-0005.md) |
 
 ## Summary
@@ -107,7 +107,7 @@ site. Nothing in it names a site, so every signature still verifies.
 [`vectors/cvp-020-v1.json`](vectors/cvp-020-v1.json): reproduce every root and proof; accept
 `repository.export` at `repository.now`; refuse every `mustRefuse` repository. The roots have been
 reproduced by a separate implementation in Python written from section 1. Tests:
-`test/social.test.mjs`.
+`rust/secure-net-core/tests/social_e2e.rs` and `rust/secure-net-core/tests/vectors_social.rs`.
 
 ## Changes
 

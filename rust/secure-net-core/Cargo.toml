@@ -1,6 +1,6 @@
 [package]
 name = "secure-net-core"
-version = "0.1.0"
+version = "0.7.0"
 description = "Secure Net in Rust: canonical JSON, signed records and end-to-end sessions, checked against the JavaScript reference's test vectors."
 edition.workspace = true
 license.workspace = true

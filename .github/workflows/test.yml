@@ -3,20 +3,6 @@ on: [push, pull_request]
 permissions:
   contents: read
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: npm install --no-audit --no-fund
-      - run: npm test
-      - run: node scripts/vectors.mjs --check
-      - run: node examples/two-party.mjs
-      - run: node examples/social.mjs
-      - run: node examples/groups.mjs
-
   rust:
     runs-on: ubuntu-latest
     steps:
@@ -24,9 +10,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install --no-audit --no-fund
       - run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown && rustup default stable
-      - name: Rust tests (against spec/vectors)
+      - name: Tests (and every vector in spec/vectors)
         working-directory: rust
         run: cargo test --locked
       - name: The standard and the code agree; the release manifest is current
@@ -35,18 +20,20 @@ jobs:
       - name: Lints (warnings are errors; unsafe code is forbidden in the core)
         working-directory: rust
         run: rustup component add clippy && cargo clippy --locked --all-targets -- -D warnings
-      - name: Rust against the JavaScript, message by message
-        run: |
-          (cd rust && cargo build --locked --example cli)
-          node --test test/rust-interop.test.mjs test/rust-crypto-interop.test.mjs test/rust-session2-interop.test.mjs test/rust-wire-ledger-interop.test.mjs test/rust-social-interop.test.mjs test/rust-groups-interop.test.mjs
-      - name: WebAssembly build
+      - name: Examples
         working-directory: rust
-        run: cargo build --locked --release --target wasm32-unknown-unknown -p secure-net-wasm
-      - name: The WebAssembly build against the JavaScript
+        run: cargo run --locked --example two_party && cargo run --locked --example social && cargo run --locked --example groups
+      - name: wasm-bindgen (the CLI matching Cargo.lock)
         run: |
           version=$(awk '/name = "wasm-bindgen"/{getline; print $3}' rust/Cargo.lock | tr -d '"')
           cargo install --locked wasm-bindgen-cli --version "$version"
-          wasm-bindgen --target nodejs --out-dir rust/pkg-node rust/target/wasm32-unknown-unknown/release/secure_net_wasm.wasm
-          # wasm-bindgen's Node.js output is CommonJS; this repository's package.json says ES modules.
-          echo '{ "type": "commonjs" }' > rust/pkg-node/package.json
-          SECURE_NET_RUST_WASM="$PWD/rust/pkg-node/secure_net_wasm.js" node --test test/rust-interop.test.mjs test/rust-crypto-interop.test.mjs test/rust-session2-interop.test.mjs test/rust-wire-ledger-interop.test.mjs test/rust-social-interop.test.mjs test/rust-groups-interop.test.mjs
+      - name: The WebAssembly build, tested under Node.js
+        working-directory: rust
+        env:
+          CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER: wasm-bindgen-test-runner
+        run: cargo test --locked --target wasm32-unknown-unknown -p secure-net-wasm
+      - name: The npm package builds and loads
+        run: |
+          cargo run --manifest-path rust/Cargo.toml --locked -p secure-net-tools -- package
+          node -e 'const m = require("./pkg/node/secure_net_wasm.js"); const r = JSON.parse(m.call(JSON.stringify({ op: "canonical", value: { b: 1, a: 2 } }))); if (r.ok !== "{\"a\":2,\"b\":1}") process.exit(1); console.log("pkg/node", m.version(), "ok")'
+          npm pack --dry-run --ignore-scripts

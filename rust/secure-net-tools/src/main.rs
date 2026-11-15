@@ -5,6 +5,7 @@
 //! cargo run -p secure-net-tools -- manifest --check    fail if it's out of date
 //! cargo run -p secure-net-tools -- standards           check the standard and the code agree
 //! cargo run -p secure-net-tools -- standards --write   also regenerate spec/REGISTRIES.md and the spec index
+//! cargo run -p secure-net-tools -- package             build the npm package (pkg/web and pkg/node)
 //! ```
 //!
 //! The vectors in `spec/vectors` are checked by `cargo test` (`secure-net-core/tests/vectors*.rs`).
@@ -32,8 +33,9 @@ fn main() -> ExitCode {
     match args.first().map(String::as_str) {
         Some("manifest") => manifest::run(flag("--check")),
         Some("standards") => standards::run(flag("--write")),
+        Some("package") => package::run(),
         _ => {
-            eprintln!("usage: secure-net-tools manifest [--check] | standards [--write]");
+            eprintln!("usage: secure-net-tools manifest [--check] | standards [--write] | package");
             ExitCode::from(2)
         }
     }
@@ -49,7 +51,8 @@ mod manifest {
     //! that keep a copy check it against this, so a copy can't drift from a release unnoticed.
     use super::*;
 
-    pub const INCLUDE: [&str; 11] = ["package.json", "README.md", "LICENSE", "GOVERNANCE.md", "snips", "src", "spec", "test", "examples", "scripts/vectors.mjs", "secure-net-conformance.json"];
+    /// What an app copies in: the Rust crates (with the patched OpenMLS), the standard and the package.
+    pub const INCLUDE: [&str; 13] = ["package.json", "README.md", "LICENSE", "GOVERNANCE.md", "snips", "spec", "secure-net-conformance.json", "rust/Cargo.toml", "rust/Cargo.lock", "rust/README.md", "rust/secure-net-core", "rust/secure-net-wasm", "rust/vendor"];
 
     pub fn files_of(dir: &Path) -> Vec<String> {
         fn walk(dir: &Path, rel: &str, out: &mut Vec<String>) {
@@ -96,6 +99,43 @@ mod manifest {
             let n = serde_json::from_str::<Value>(&want).unwrap()["files"].as_object().unwrap().len();
             println!("Wrote secure-net.manifest.json ({n} files).");
         }
+        ExitCode::SUCCESS
+    }
+}
+
+mod package {
+    //! The npm package is the WebAssembly build: `pkg/web` (an ES module; call `init()` first) and
+    //! `pkg/node` (CommonJS, ready on import). Needs the wasm32 target and `wasm-bindgen` (the CLI
+    //! of the same version as the `wasm-bindgen` crate in Cargo.lock).
+    use super::*;
+    use std::process::Command;
+
+    fn sh(cmd: &mut Command) -> bool {
+        let ok = cmd.status().map(|s| s.success()).unwrap_or(false);
+        if !ok {
+            eprintln!("failed: {cmd:?}");
+        }
+        ok
+    }
+
+    pub fn run() -> ExitCode {
+        let root = root();
+        let rust = root.join("rust");
+        if !sh(Command::new("cargo").current_dir(&rust).args(["build", "--locked", "--release", "--target", "wasm32-unknown-unknown", "-p", "secure-net-wasm"])) {
+            return ExitCode::FAILURE;
+        }
+        let wasm = rust.join("target/wasm32-unknown-unknown/release/secure_net_wasm.wasm");
+        for (target, dir) in [("web", "pkg/web"), ("nodejs", "pkg/node")] {
+            let out = root.join(dir);
+            let _ = fs::remove_dir_all(&out);
+            if !sh(Command::new("wasm-bindgen").args(["--target", target, "--out-dir"]).arg(&out).arg(&wasm)) {
+                return ExitCode::FAILURE;
+            }
+            let _ = fs::remove_file(out.join(".gitignore"));
+        }
+        // wasm-bindgen's Node.js output is CommonJS; the package says ES modules.
+        fs::write(root.join("pkg/node/package.json"), "{ \"type\": \"commonjs\" }\n").unwrap();
+        println!("Built pkg/web and pkg/node.");
         ExitCode::SUCCESS
     }
 }

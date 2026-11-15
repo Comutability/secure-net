@@ -1,14 +1,19 @@
 # Secure Net in Rust
 
-A port of the JavaScript reference library to Rust, compiled to WebAssembly so the same code can
-run in browsers, Node.js, Deno and on servers. It is the first step of moving Secure Net, and then
-Commonveil's cryptography, onto Rust.
+Secure Net's implementation, compiled to WebAssembly so the same code runs in browsers, Node.js,
+Deno and on servers. Since 0.7.0 it is the only implementation: it began as a port of the
+JavaScript reference library, checked against it message by message, and the JavaScript was then
+removed.
 
-**Status: in progress, and not reviewed.** Nothing here has been examined by a human
+**Status: not reviewed.** Nothing here has been examined by a human
 cryptographer or audited. The RustCrypto `ml-dsa` and `ml-kem` crates it uses say the same of
 themselves.
 
 ## What is ported
+
+The "Checked against" column records how each part was checked against the JavaScript reference
+while both existed (the interoperability suites are in the history, up to commit `c55f96d`). The
+Rust tests and every file in `spec/vectors` still run on every change.
 
 | Part | Rust | Checked against |
 | --- | --- | --- |
@@ -57,15 +62,16 @@ From Rust, use the modules directly.
 
 ```bash
 cd rust
-cargo test                       # the Rust tests, against spec/vectors
-cargo build --example cli        # then, from the repository root:
-node --test test/rust-*.test.mjs
-cargo build --release --target wasm32-unknown-unknown -p secure-net-wasm
+cargo test                       # the Rust tests, and every vector in spec/vectors
+cargo test --target wasm32-unknown-unknown -p secure-net-wasm   # the WebAssembly build under Node.js
 cargo run -p secure-net-tools -- standards   # the standard, the registries and the code agree
 cargo run -p secure-net-tools -- manifest    # rewrite secure-net.manifest.json (--check to verify)
+cargo run -p secure-net-tools -- package     # the npm package: pkg/web and pkg/node
 ```
 
-CI runs all of these, and runs the interop test a second time against the WebAssembly build.
+The WebAssembly tests need `wasm-bindgen-test-runner` (from `wasm-bindgen-cli`, the same version
+as the `wasm-bindgen` crate) as the wasm32 runner:
+`CARGO_TARGET_WASM32_UNKNOWN_UNKNOWN_RUNNER=wasm-bindgen-test-runner`. CI runs all of these.
 
 ## Checks
 

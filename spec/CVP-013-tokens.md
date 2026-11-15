@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | `cvp.tokens` (version 1) |
 | Depends on | none |
-| Code | `src/tokens/voprf.js` |
+| Code | `rust/secure-net-core/src/tokens/mod.rs` |
 | Proposed in | none (written before the proposal process; recorded in [SNIP-0004](../snips/SNIP-0004.md)) |
 
 One-use tokens an issuer hands out without being able to recognise them later. Suite:
@@ -45,7 +45,7 @@ assumption). There is no standardised post-quantum VOPRF yet (CVP-015).
 
 ## Conformance
 
-`test/governance.test.mjs` covers issuing, checking proofs and spending. RFC 9497's own test vectors
+The Rust tests covers issuing, checking proofs and spending. RFC 9497's own test vectors
 apply to the underlying suite (`P256-SHA256`, VOPRF mode); vectors for this part's scope
 derivation and nullifiers are still to write (CVP-010, section 6).
 

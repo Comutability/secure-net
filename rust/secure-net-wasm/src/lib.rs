@@ -12,8 +12,8 @@ pub fn call(request: &str) -> String {
     secure_net_core::api::call_text(request)
 }
 
-/// The version of this build.
+/// The Secure Net release this build implements.
 #[wasm_bindgen]
 pub fn version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
+    secure_net_core::wire::features::SECURE_NET_VERSION.to_string()
 }

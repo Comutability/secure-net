@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | none (every implementation needs it); quantum-resistant keys are announced as `cvp.pq-signatures` (CVP-015) |
 | Depends on | nothing |
-| Code | `src/core/canonical.js`, `src/core/signed.js`, `src/core/bytes.js` |
+| Code | `rust/secure-net-core/src/canonical.rs`, `rust/secure-net-core/src/signed.rs`, `rust/secure-net-core/src/bytes.rs` |
 | Proposed in | Written down in [SNIP-0004](../snips/SNIP-0004.md) from the code as released in 0.4.0; the quantum-resistant keys came from SNIP-0002 |
 
 ## Summary

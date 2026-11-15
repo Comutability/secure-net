@@ -1,80 +1,38 @@
 {
   "name": "@comutability/secure-net",
-  "version": "0.6.0",
-  "description": "Secure Net: the Commonveil Protocol. Private, end-to-end encrypted, federated communication that any app or site can use.",
+  "version": "0.7.0",
+  "description": "Secure Net: the Commonveil Protocol. Private, end-to-end encrypted, federated communication that any app or site can use. Written in Rust; this package is its WebAssembly build.",
   "type": "module",
   "license": "AGPL-3.0-only",
   "repository": {
     "type": "git",
     "url": "https://github.com/Comutability/secure-net"
   },
-  "main": "./src/index.js",
   "exports": {
-    ".": "./src/index.js",
-    "./core/*": "./src/core/*.js",
-    "./crypto/*": "./src/crypto/*.js",
-    "./wire/*": "./src/wire/*.js",
-    "./commons/*": "./src/commons/*.js",
-    "./governance/*": "./src/governance/*.js",
-    "./tokens/*": "./src/tokens/*.js",
-    "./identity/*": "./src/identity/*.js",
-    "./consent/*": "./src/consent/*.js",
-    "./extensions/*": "./src/extensions/*.js",
-    "./session": "./src/session/index.js",
-    "./session/*": "./src/session/*.js",
-    "./social": "./src/social/index.js",
-    "./social/*": "./src/social/*.js",
-    "./package.json": "./package.json",
-    "./groups": "./src/groups/mls.js",
-    "./groups/*": "./src/groups/*.js"
+    ".": {
+      "node": "./pkg/node/secure_net_wasm.js",
+      "default": "./pkg/web/secure_net_wasm.js"
+    },
+    "./web": "./pkg/web/secure_net_wasm.js",
+    "./node": "./pkg/node/secure_net_wasm.js",
+    "./package.json": "./package.json"
   },
   "files": [
-    "src",
+    "pkg",
     "spec",
-    "examples",
-    "scripts/vectors.mjs",
     "secure-net-conformance.json",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "GOVERNANCE.md"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "test": "node --test test/*.test.mjs",
-    "vectors": "node scripts/vectors.mjs",
+    "build": "cargo run --manifest-path rust/Cargo.toml -p secure-net-tools -- package",
+    "prepack": "npm run build",
+    "test": "cargo test --manifest-path rust/Cargo.toml",
     "standards": "cargo run --manifest-path rust/Cargo.toml -p secure-net-tools -- standards",
-    "example": "node examples/two-party.mjs",
-    "example:social": "node examples/social.mjs",
     "manifest": "cargo run --manifest-path rust/Cargo.toml -p secure-net-tools -- manifest"
-  },
-  "dependencies": {
-    "@noble/curves": "^2.4.0",
-    "@noble/hashes": "^2.4.0",
-    "@noble/post-quantum": "0.7.1",
-    "@scure/bip39": "^2.4.0"
-  },
-  "overrides": {
-    "ts-mls": {
-      "@noble/curves": "$@noble/curves",
-      "@noble/post-quantum": "$@noble/post-quantum",
-      "@noble/ciphers": "2.4.0"
-    }
-  },
-  "devDependencies": {
-    "@hpke/hybridkem-x-wing": "^0.7.0",
-    "ts-mls": "^1.6.4"
-  },
-  "peerDependencies": {
-    "ts-mls": "1.6.4",
-    "@hpke/hybridkem-x-wing": "0.7.0"
-  },
-  "peerDependenciesMeta": {
-    "ts-mls": {
-      "optional": true
-    },
-    "@hpke/hybridkem-x-wing": {
-      "optional": true
-    }
   }
 }

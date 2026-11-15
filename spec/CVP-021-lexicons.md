@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | `cvp.lexicons` (version 1) |
 | Depends on | CVP-002, CVP-017, CVP-018 |
-| Code | `src/social/lexicon.js`, `src/social/vocabulary.js` |
+| Code | `rust/secure-net-core/src/social/lexicon.rs`, `rust/secure-net-core/src/social/vocabulary.rs` |
 | Proposed in | [SNIP-0005](../snips/SNIP-0005.md) |
 
 ## Summary
@@ -100,7 +100,7 @@ revision stay valid (CVP-000, section 5). Anything else is a new type: `org.exam
 
 [`vectors/cvp-021-v1.json`](vectors/cvp-021-v1.json): accept `lexicon` from `publisher`; refuse it
 from `notPublisher` and from the same key's actor on another domain; judge each of `objects` valid or invalid as stated.
-Tests: `test/social.test.mjs`.
+Tests: `rust/secure-net-core/tests/social_e2e.rs`, `rust/secure-net-core/tests/social_guards.rs`, `rust/secure-net-core/tests/vectors_social.rs`.
 
 ## Changes
 

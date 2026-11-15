@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | `cvp.governance` (version 1) |
 | Depends on | CVP-002, CVP-011, CVP-013 |
-| Code | `src/governance/vote.js`, `src/governance/debate.js` |
+| Code | `rust/secure-net-core/src/governance/vote.rs`, `rust/secure-net-core/src/governance/debate.rs` |
 | Proposed in | none (written before the proposal process; recorded in [SNIP-0004](../snips/SNIP-0004.md)) |
 
 DAO-style decisions without a blockchain: proposals, structured debate and votes, all as signed
@@ -76,7 +76,7 @@ post and who moderates.
 
 ## Conformance
 
-`test/governance.test.mjs` covers motions, both ballot kinds, counting methods, recounts and
+The Rust tests covers motions, both ballot kinds, counting methods, recounts and
 debates. There are no language-neutral vectors for this part yet (CVP-010, section 6).
 
 ## Changes

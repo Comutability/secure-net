@@ -33,7 +33,7 @@ In order of authority:
 2. The **test vectors** in `spec/vectors/`. A vector that disagrees with a part document is a bug
    in one of them; until it is fixed, say so in the part's errata, and implementations SHOULD
    follow the vector, since that is what deployed code does.
-3. The **reference implementation** (`src/`) and its tests. Where it disagrees with the documents
+3. The **reference implementation** (`rust/secure-net-core`) and its tests. Where it disagrees with the documents
    or vectors, that is a bug to be fixed in one of them. It is not a third source of truth.
 
 Accepted SNIPs are the record of why the standard changed; they are not themselves normative
@@ -195,7 +195,7 @@ Rules:
 - Names starting `x-` (record kinds, features: `x-example.thing`, `cvp.x-example`) are reserved for
   private experiments. They MUST NOT appear between sites run by different people, and are never
   registered.
-- Labels starting `commonveil` belong to the older Commonveil-derived code (`src/crypto`) and are
+- Labels starting `commonveil` belong to the older Commonveil-derived code (`rust/secure-net-core/src/cv`) and are
   registered so they are never reused; new labels MUST start `secure-net/`.
 
 `rust/secure-net-tools` checks the reference code against the registries on every build: a record
