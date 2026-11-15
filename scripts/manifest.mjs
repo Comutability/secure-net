@@ -9,7 +9,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 
 const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-const INCLUDE = ["package.json", "README.md", "LICENSE", "GOVERNANCE.md", "snips", "src", "spec", "test", "examples", "scripts/vectors.mjs"];
+const INCLUDE = ["package.json", "README.md", "LICENSE", "GOVERNANCE.md", "snips", "src", "spec", "test", "examples", "scripts/vectors.mjs", "scripts/standards.mjs", "secure-net-conformance.json"];
 
 export function filesOf(dir) {
   const out = [];

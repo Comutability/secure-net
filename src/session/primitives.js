@@ -13,7 +13,12 @@ import { b64u, fromB64u, utf8, concat } from "../core/bytes.js";
 import { canonicalBytes } from "../core/canonical.js";
 
 export const LABEL = "secure-net/session/v1";
-const info = (what) => utf8(`${LABEL}/${what}`);
+/** Every purpose derived through info(). Registered in spec/registry.json; anything else is refused. */
+export const PURPOSES = Object.freeze(["handshake", "transcript", "root", "message", "group", "history"]);
+const info = (what) => {
+  if (!PURPOSES.includes(what)) throw new Error(`"${LABEL}/${what}" isn't a registered label`);
+  return utf8(`${LABEL}/${what}`);
+};
 const ZERO32 = new Uint8Array(32);
 
 export const random = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n));

@@ -1,11 +1,19 @@
 # CVP-016: End-to-end sessions
 
+| | |
+| --- | --- |
+| Status | Draft (merged into the reference implementation; awaiting human cryptographic review) |
+| Version | 1 |
+| Feature | `cvp.sessions` (version 1) |
+| Depends on | CVP-002 |
+| Code | `src/session/` |
+| Proposed in | [SNIP-0003](../snips/SNIP-0003.md) |
+
 How two devices agree keys, exchange messages and keep them private, including from an attacker
 who records everything today and has a large quantum computer later. It covers one-to-one
 messages, a person's several devices, groups, and moving history to a new device.
 
-Status: **Draft, implemented** (`src/session/`, Secure Net 0.4.0). Proposed in
-[SNIP-0003](../snips/SNIP-0003.md). Not yet reviewed by a qualified human cryptographer; nothing
+Implemented in Secure Net 0.4.0. Not yet reviewed by a qualified human cryptographer; nothing
 here should be relied on until it has been.
 
 The design follows Signal's: an X3DH-style handshake made post-quantum as in PQXDH, then a double
@@ -227,3 +235,10 @@ and checks no plaintext is in it.
 `crypto/envelope` (CVP-003) seals content to an account's shared key, so it has no forward
 secrecy and keeps a classical fallback. New messages SHOULD use sessions. Commonveil's switch is
 a separate change with its own migration plan.
+
+## Changes
+
+| Version | Date | SNIP | Change |
+| --- | --- | --- | --- |
+| 1 | 2026-11-13 | SNIP-0003 | First version, in Secure Net 0.4.0 |
+| 1 | 2026-11-13 | SNIP-0004 | Editorial: standard header; labels registered |
