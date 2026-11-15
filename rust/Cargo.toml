@@ -1,0 +1,9 @@
+[workspace]
+resolver = "2"
+members = ["secure-net-core", "secure-net-wasm"]
+
+[workspace.package]
+edition = "2021"
+license = "AGPL-3.0-only"
+repository = "https://github.com/Comutability/secure-net"
+rust-version = "1.87"

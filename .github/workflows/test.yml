@@ -18,3 +18,29 @@ jobs:
       - run: node examples/two-party.mjs
       - run: node examples/social.mjs
       - run: node examples/groups.mjs
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - run: rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown && rustup default stable
+      - name: Rust tests (against spec/vectors)
+        working-directory: rust
+        run: cargo test --locked
+      - name: Rust against the JavaScript, message by message
+        run: |
+          (cd rust && cargo build --locked --example cli)
+          node --test test/rust-interop.test.mjs
+      - name: WebAssembly build
+        working-directory: rust
+        run: cargo build --locked --release --target wasm32-unknown-unknown -p secure-net-wasm
+      - name: The WebAssembly build against the JavaScript
+        run: |
+          version=$(awk '/name = "wasm-bindgen"/{getline; print $3}' rust/Cargo.lock | tr -d '"')
+          cargo install --locked wasm-bindgen-cli --version "$version"
+          wasm-bindgen --target nodejs --out-dir rust/pkg-node rust/target/wasm32-unknown-unknown/release/secure_net_wasm.wasm
+          SECURE_NET_RUST_WASM="$PWD/rust/pkg-node/secure_net_wasm.js" node --test test/rust-interop.test.mjs
