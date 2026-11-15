@@ -1,6 +1,6 @@
 {
   "about": "The registries of the Commonveil Protocol (CVP-000, section 7). Normative. Changed only by a SNIP, in the same pull request as the part text and code. rust/secure-net-tools checks the reference code against this file and writes spec/REGISTRIES.md and the index in spec/README.md from it.",
-  "release": "0.6.0",
+  "release": "0.7.0",
   "partStatuses": [
     "Reserved",
     "Draft",
@@ -26,7 +26,7 @@
       "features": [],
       "dependsOn": [],
       "code": [
-        "rust/secure-net-tools"
+        "rust/secure-net-tools/"
       ],
       "vectors": []
     },
@@ -44,9 +44,9 @@
         "CVP-002"
       ],
       "code": [
-        "src/crypto/identity.js",
-        "src/crypto/recovery.js",
-        "src/identity/portable.js"
+        "rust/secure-net-core/src/cv/identity.rs",
+        "rust/secure-net-core/src/cv/recovery.rs",
+        "rust/secure-net-core/src/portable.rs"
       ],
       "vectors": []
     },
@@ -59,8 +59,8 @@
       "features": [],
       "dependsOn": [],
       "code": [
-        "src/core/canonical.js",
-        "src/core/signed.js"
+        "rust/secure-net-core/src/canonical.rs",
+        "rust/secure-net-core/src/signed.rs"
       ],
       "vectors": [
         "vectors/cvp-002-v1.json"
@@ -79,9 +79,9 @@
         "CVP-001"
       ],
       "code": [
-        "src/crypto/envelope.js",
-        "src/crypto/serverKeys.js",
-        "src/crypto/kem.js"
+        "rust/secure-net-core/src/cv/envelope.rs",
+        "rust/secure-net-core/src/cv/server_keys.rs",
+        "rust/secure-net-core/src/cv/kem.rs"
       ],
       "vectors": []
     },
@@ -96,7 +96,7 @@
         "CVP-011"
       ],
       "code": [
-        "src/commons/ledger.js"
+        "rust/secure-net-core/src/commons.rs"
       ],
       "vectors": []
     },
@@ -113,7 +113,7 @@
         "CVP-008"
       ],
       "code": [
-        "src/wire/federation.js"
+        "rust/secure-net-core/src/wire/federation.rs"
       ],
       "vectors": []
     },
@@ -152,8 +152,8 @@
         "CVP-002"
       ],
       "code": [
-        "src/extensions/manifest.js",
-        "src/wire/features.js"
+        "rust/secure-net-core/src/extensions.rs",
+        "rust/secure-net-core/src/wire/features.rs"
       ],
       "vectors": []
     },
@@ -179,8 +179,8 @@
         "CVP-000"
       ],
       "code": [
-        "test/",
-        "scripts/vectors.mjs"
+        "rust/secure-net-core/tests/",
+        "rust/secure-net-wasm/tests/"
       ],
       "vectors": []
     },
@@ -197,7 +197,7 @@
         "CVP-002"
       ],
       "code": [
-        "src/commons/ledger.js"
+        "rust/secure-net-core/src/commons.rs"
       ],
       "vectors": []
     },
@@ -216,8 +216,8 @@
         "CVP-013"
       ],
       "code": [
-        "src/governance/vote.js",
-        "src/governance/debate.js"
+        "rust/secure-net-core/src/governance/vote.rs",
+        "rust/secure-net-core/src/governance/debate.rs"
       ],
       "vectors": []
     },
@@ -232,7 +232,7 @@
       ],
       "dependsOn": [],
       "code": [
-        "src/tokens/voprf.js"
+        "rust/secure-net-core/src/tokens/mod.rs"
       ],
       "vectors": []
     },
@@ -249,7 +249,7 @@
         "CVP-002"
       ],
       "code": [
-        "src/consent/capsule.js"
+        "rust/secure-net-core/src/consent.rs"
       ],
       "vectors": []
     },
@@ -268,8 +268,8 @@
         "CVP-005"
       ],
       "code": [
-        "src/wire/sealed.js",
-        "src/core/signed.js"
+        "rust/secure-net-core/src/wire/sealed.rs",
+        "rust/secure-net-core/src/signed.rs"
       ],
       "vectors": []
     },
@@ -286,7 +286,7 @@
         "CVP-002"
       ],
       "code": [
-        "src/session/"
+        "rust/secure-net-core/src/session/"
       ],
       "vectors": [
         "vectors/cvp-016-v1.json",
@@ -307,7 +307,7 @@
         "CVP-016"
       ],
       "code": [
-        "src/social/actor.js"
+        "rust/secure-net-core/src/social/actor.rs"
       ],
       "vectors": [
         "vectors/cvp-017-v1.json"
@@ -327,8 +327,8 @@
         "CVP-017"
       ],
       "code": [
-        "src/social/vocabulary.js",
-        "src/social/activity.js"
+        "rust/secure-net-core/src/social/vocabulary.rs",
+        "rust/secure-net-core/src/social/activity.rs"
       ],
       "vectors": [
         "vectors/cvp-018-v1.json"
@@ -351,9 +351,9 @@
         "CVP-018"
       ],
       "code": [
-        "src/social/delivery.js",
-        "src/social/site.js",
-        "src/social/client.js"
+        "rust/secure-net-core/src/social/delivery.rs",
+        "rust/secure-net-core/src/social/site.rs",
+        "rust/secure-net-core/src/social/client.rs"
       ],
       "vectors": [
         "vectors/cvp-019-v1.json",
@@ -375,7 +375,7 @@
         "CVP-018"
       ],
       "code": [
-        "src/social/repo.js"
+        "rust/secure-net-core/src/social/repo.rs"
       ],
       "vectors": [
         "vectors/cvp-020-v1.json"
@@ -396,7 +396,7 @@
         "CVP-018"
       ],
       "code": [
-        "src/social/lexicon.js"
+        "rust/secure-net-core/src/social/lexicon.rs"
       ],
       "vectors": [
         "vectors/cvp-021-v1.json"
@@ -419,7 +419,7 @@
         "CVP-019"
       ],
       "code": [
-        "src/groups/"
+        "rust/secure-net-core/src/groups/"
       ],
       "vectors": []
     }

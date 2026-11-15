@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | `cvp.sealed-relay` (version 1), `cvp.pq-signatures` (version 1) |
 | Depends on | CVP-002, CVP-005 |
-| Code | `src/wire/sealed.js`, `src/core/signed.js` |
+| Code | `rust/secure-net-core/src/wire/sealed.rs`, `rust/secure-net-core/src/signed.rs` |
 | Proposed in | [SNIP-0002](../snips/SNIP-0002.md) |
 
 What in the protocol resists an attacker with a large quantum computer, including one who
@@ -69,7 +69,7 @@ classical and why. For the sealed relay specifically:
 
 ## Conformance
 
-`test/pq.test.mjs` covers hybrid signatures and the sealed relay. CVP-002's vectors cover hybrid
+The Rust tests covers hybrid signatures and the sealed relay. CVP-002's vectors cover hybrid
 signed records. Vectors for sealing are still to write (CVP-010, section 6).
 
 ## Changes

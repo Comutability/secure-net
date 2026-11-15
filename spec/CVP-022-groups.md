@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | `cvp.groups` (version 1) |
 | Depends on | CVP-002, CVP-016, CVP-017, CVP-018, CVP-019 |
-| Code | `src/groups/` |
+| Code | `rust/secure-net-core/src/groups/` |
 | Proposed in | [SNIP-0006](../snips/SNIP-0006.md) |
 
 ## Summary
@@ -130,7 +130,7 @@ something another member wrote for a different audience into the group.
 
 ## Conformance
 
-`test/groups.test.mjs`: forming a group; removal; recovery from a copied member state and from a
+`rust/secure-net-core/tests/groups.rs`, `groups_e2e.rs` and `groups_guards.rs`: forming a group; removal; recovery from a copied member state and from a
 copied committer state; a newcomer can't read the past; only the committer commits (including a
 valid MLS commit made by another member with the library directly); credential checks; two sites
 end to end. There are no vectors of this part's own: MLS conformance is RFC 9420's, and the

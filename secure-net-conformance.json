@@ -1,9 +1,9 @@
 {
-  "implementation": "Secure Net (reference implementation)",
-  "version": "0.6.0",
+  "implementation": "Secure Net (reference implementation, Rust)",
+  "version": "0.7.0",
   "source": "https://github.com/Comutability/secure-net",
   "licence": "AGPL-3.0-only",
-  "release": "0.6.0",
+  "release": "0.7.0",
   "profiles": [
     "core",
     "messaging",
@@ -174,7 +174,7 @@
   },
   "deviations": [],
   "tested": {
-    "how": "npm test; node scripts/vectors.mjs --check; cargo run -p secure-net-tools -- standards; node examples/two-party.mjs; node examples/social.mjs. CVP-001, 003, 004, 005, 008 and 014 have no part document yet, so for those the reference code is the definition (CVP-010, section 5). No independent implementation has interoperated with it yet."
+    "how": "cargo test (Rust tests and every vector file in spec/vectors); cargo test --target wasm32-unknown-unknown -p secure-net-wasm (the WebAssembly build under Node.js); cargo run -p secure-net-tools -- standards; cargo run --example two_party, social and groups. CVP-001, 003, 004, 005, 008 and 014 have no part document yet, so for those the reference code is the definition (CVP-010, section 5). Until 0.7.0 this Rust implementation was checked message by message against the former JavaScript reference implementation; its groups interoperate with ts-mls. No implementation by another team has interoperated with it yet."
   },
   "contact": "https://github.com/Comutability/secure-net/issues"
 }

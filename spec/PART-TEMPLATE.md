@@ -14,7 +14,7 @@ every byte and label in full, and say plainly what isn't protected.
 | Version | 1 |
 | Feature | `cvp.name` (version 1), or "none" |
 | Depends on | CVP-002, ... |
-| Code | `src/area/module.js` |
+| Code | `rust/secure-net-core/src/area/module.rs` |
 | Proposed in | [SNIP-NNNN](../snips/SNIP-NNNN.md) |
 
 ## Summary

@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | `cvp.commons-ledger` (version 1) |
 | Depends on | CVP-002 |
-| Code | `src/commons/ledger.js` |
+| Code | `rust/secure-net-core/src/commons.rs` |
 | Proposed in | none (written before the proposal process; recorded in [SNIP-0004](../snips/SNIP-0004.md)) |
 
 A community's history as a chain of signed blocks that any approved site keeps a full copy of.
@@ -115,7 +115,7 @@ clients follow the change from the ledger itself.
 
 ## Conformance
 
-`test/ledger.test.mjs` covers replay, reconciliation, splits and failover. There are no
+The Rust tests covers replay, reconciliation, splits and failover. There are no
 language-neutral vectors for this part yet (CVP-010, section 6).
 
 ## Changes

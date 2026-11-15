@@ -3,7 +3,7 @@ use serde_json::{json, Map, Value};
 
 use crate::canonical::MAX_SAFE_INTEGER;
 
-pub const SECURE_NET_VERSION: &str = "0.6.0";
+pub const SECURE_NET_VERSION: &str = "0.7.0";
 
 /// Everything this version implements, with the version of each, in the JavaScript's order.
 pub const FEATURES: [(&str, i64); 18] = [

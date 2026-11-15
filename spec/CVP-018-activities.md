@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | `cvp.activities` (version 1) |
 | Depends on | CVP-002, CVP-017 |
-| Code | `src/social/vocabulary.js`, `src/social/activity.js` |
+| Code | `rust/secure-net-core/src/social/vocabulary.rs`, `rust/secure-net-core/src/social/activity.rs` |
 | Proposed in | [SNIP-0005](../snips/SNIP-0005.md) |
 
 ## Summary
@@ -197,7 +197,7 @@ networks read everything they carry.
   or not as stated;
 - `signed.record` MUST verify against the actor document in `cvp-017-v1.json` at `signed.now`.
 
-Tests: `test/social.test.mjs`.
+Tests: `rust/secure-net-core/tests/social_e2e.rs`, `rust/secure-net-core/tests/social_guards.rs`, `rust/secure-net-core/tests/vectors_social.rs`.
 
 ## Changes
 

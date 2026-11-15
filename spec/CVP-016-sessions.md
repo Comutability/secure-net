@@ -6,7 +6,7 @@
 | Version | 2 |
 | Feature | `cvp.sessions` (version 2; version 1 deprecated, still accepted) |
 | Depends on | CVP-002 |
-| Code | `src/session/` |
+| Code | `rust/secure-net-core/src/session/` |
 | Proposed in | [SNIP-0003](../snips/SNIP-0003.md); version 2 in [SNIP-0006](../snips/SNIP-0006.md) |
 
 How two devices agree keys, exchange messages and keep them private, including from an attacker
@@ -228,7 +228,7 @@ a new version.
 ## Version 2
 
 Version 2 changes the handshake and the ratchet of one-to-one sessions. Keys, bundles, devices,
-sender keys and new devices are unchanged. It is implemented in `src/session/v2.js` (Secure Net
+sender keys and new devices are unchanged. It is implemented in `rust/secure-net-core/src/session/v2.rs` (Secure Net
 0.6.0) and, like version 1, has **not been reviewed by a qualified human cryptographer**.
 
 A device says it speaks version 2 with `"sessions": 2` in the body of its signed prekey. The
@@ -356,13 +356,13 @@ deniability X3DH and PQXDH aim for; it has not been analysed for this protocol.
 
 ## Conformance
 
-`test/session.test.mjs` and the vectors in [vectors/cvp-016-v1.json](vectors/cvp-016-v1.json)
-(written by `scripts/vectors.mjs`). The X25519, HKDF, HMAC and AES-GCM vectors have been checked
+`rust/secure-net-core/tests/session.rs` and the vectors in [vectors/cvp-016-v1.json](vectors/cvp-016-v1.json)
+(written by the former JavaScript reference implementation's vector script; checked by `cargo test`). The X25519, HKDF, HMAC and AES-GCM vectors have been checked
 against Node's built-in crypto, an independent implementation; the ML-KEM-768 vector comes from
 @noble/post-quantum and has not been checked against a second implementation yet.
-Version 2: `test/session2.test.mjs` and [vectors/cvp-016-v2.json](vectors/cvp-016-v2.json), whose
+Version 2: `rust/secure-net-core/tests/session2.rs` and [vectors/cvp-016-v2.json](vectors/cvp-016-v2.json), whose
 HKDF derivations have been checked against an independent implementation (Python's `hmac`).
-`examples/two-party.mjs` runs the whole protocol through a relay that keeps a copy of everything
+`cargo run --example two_party` runs the whole protocol through a relay that keeps a copy of everything
 and checks no plaintext is in it.
 
 ## Relation to older parts

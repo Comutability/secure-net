@@ -46,6 +46,12 @@ pub fn call(req: &Value) -> Result<Value, Error> {
             let n = |k: &str, d: u64| req[k].as_u64().unwrap_or(d) as usize;
             json!(create_prekeys(&device, n("oneTime", 3), n("pqOneTime", 3), now()?, req["sessions"].as_i64().unwrap_or(1))?)
         }
+        "takeBundle" => {
+            // What a site hands out for one device; returns the bundle and what is left to publish.
+            let mut published: crate::session::keys::Published = field(req, "published")?;
+            let bundle = crate::session::keys::take_bundle(&req["deviceList"], &mut published, req["device"].as_str().unwrap_or(""));
+            json!({ "bundle": bundle, "published": published })
+        }
         "sign" => {
             let key: SigningKey = field(req, "key")?;
             sign(req["kind"].as_str().unwrap_or(""), &req["body"], &key)?
