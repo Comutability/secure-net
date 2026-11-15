@@ -31,6 +31,19 @@ pub fn entries(v: &Value) -> Vec<(String, Value)> {
     }
 }
 
+/// `${v}` in a template: "undefined" for a missing field, otherwise JavaScript's `String(v)`.
+pub fn show(v: Option<&Value>) -> String {
+    match v {
+        None => "undefined".into(),
+        Some(x) => crate::cv::canonical::js_string(x),
+    }
+}
+
+/// `s.trim()`, with JavaScript's idea of white space.
+pub fn trim(s: &str) -> &str {
+    s.trim_matches(crate::social::vocabulary::js_space_pub)
+}
+
 /// `s.length`: UTF-16 code units.
 pub fn len16(s: &str) -> usize {
     s.encode_utf16().count()
@@ -63,6 +76,9 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
 /// zone; that is refused here (None), as are the other, implementation-defined formats
 /// `Date.parse` may accept. Protocol records should always carry `toISOString()` times.
 pub fn date_parse(s: &str) -> Option<i64> {
+    if let Some(t) = http_date(s) {
+        return Some(t);
+    }
     let b = s.as_bytes();
     let digits = |from: usize, n: usize| -> Option<i64> {
         let part = s.get(from..from + n)?;
@@ -145,6 +161,35 @@ pub fn date_parse(s: &str) -> Option<i64> {
         }
         _ => None,
     }
+}
+
+/// The HTTP date form `toUTCString()` writes, `Sun, 15 Nov 2026 10:00:00 GMT` (the weekday is
+/// optional and, as in V8, not checked; `UTC` may stand for `GMT`).
+fn http_date(s: &str) -> Option<i64> {
+    let rest = match s.split_once(", ") {
+        Some((wd, r)) if wd.len() == 3 && wd.bytes().all(|c| c.is_ascii_alphabetic()) => r,
+        _ => s,
+    };
+    let parts: Vec<&str> = rest.split(' ').collect();
+    if parts.len() != 5 || !(parts[4] == "GMT" || parts[4] == "UTC") {
+        return None;
+    }
+    let d: i64 = parts[0].parse().ok().filter(|_| (1..=2).contains(&parts[0].len()) && parts[0].bytes().all(|c| c.is_ascii_digit()))?;
+    const MONTHS: [&str; 12] = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    let mo = MONTHS.iter().position(|m| *m == parts[1])? as i64 + 1;
+    if parts[2].len() != 4 || !parts[2].bytes().all(|c| c.is_ascii_digit()) {
+        return None;
+    }
+    let y: i64 = parts[2].parse().ok()?;
+    let hms: Vec<&str> = parts[3].split(':').collect();
+    if hms.len() != 3 || hms.iter().any(|x| x.len() != 2 || !x.bytes().all(|c| c.is_ascii_digit())) {
+        return None;
+    }
+    let (h, mi, sec): (i64, i64, i64) = (hms[0].parse().ok()?, hms[1].parse().ok()?, hms[2].parse().ok()?);
+    if !(1..=31).contains(&d) || h > 23 || mi > 59 || sec > 59 {
+        return None;
+    }
+    Some(days_from_civil(y, mo, d) * 86_400_000 + h * 3_600_000 + mi * 60_000 + sec * 1000)
 }
 
 #[cfg(test)]

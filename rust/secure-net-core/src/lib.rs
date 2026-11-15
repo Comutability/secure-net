@@ -33,6 +33,7 @@ pub mod extensions;
 pub mod governance;
 pub mod session;
 pub mod signed;
+pub mod social;
 pub mod tokens;
 
 pub use error::Error;

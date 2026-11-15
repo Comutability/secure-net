@@ -74,7 +74,7 @@ pub fn host_ok(v: &str) -> bool {
 
 /// A site address in its one accepted form, or None.
 pub fn norm_host(h: &str) -> Option<String> {
-    let mut v = h.trim().to_lowercase();
+    let mut v = crate::js::trim(h).to_lowercase();
     for scheme in ["http://", "https://"] {
         if let Some(rest) = v.strip_prefix(scheme) {
             v = rest.to_string();

@@ -63,7 +63,8 @@ pub fn js_string(v: &Value) -> String {
                 }
             }
         }
-        _ => "[object Object]".into(),
+        Value::Array(a) => a.iter().map(|x| if x.is_null() { String::new() } else { js_string(x) }).collect::<Vec<_>>().join(","),
+        Value::Object(_) => "[object Object]".into(),
     }
 }
 

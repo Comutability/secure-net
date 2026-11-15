@@ -165,3 +165,65 @@ pub fn call(op: &str, req: &Value) -> Option<Result<Value>> {
     let prefixes = ["ed25519.", "js.", "wire.", "relay.", "tokens.", "ledger.", "vote.", "debate.", "persona.", "migration.", "consent.", "ext.", "theme."];
     prefixes.iter().any(|p| op.starts_with(p)).then(run)
 }
+
+/// The social protocol's operations.
+pub fn call_social(op: &str, req: &Value) -> Option<Result<Value>> {
+    use crate::session::keys::Device;
+    use crate::social::{activity as act, actor, delivery as dl, lexicon as lex, repo, vocabulary as voc};
+    let device = |k: &str| -> Result<Device> { serde_json::from_value(req[k].clone()).map_err(|e| Error::new("BAD_INPUT", format!("{k}: {e}"))) };
+    let now = || int(req, "now");
+    let run = || -> Result<Value> {
+        Ok(match op {
+            "social.objectProblems" => json!(voc::object_problems(req.get("object"), req.get("actor"), req["encrypted"] == true, req["at"].as_str().unwrap_or("object"))),
+            "social.activityProblems" => json!(voc::activity_problems(&req["activity"], req["encrypted"] == true)?),
+            "social.newId" => json!(voc::new_id(s(req, "actor"))?),
+            "social.parseHandle" => match actor::parse_handle(s(req, "handle")) {
+                Some((name, host, handle)) => json!({ "name": name, "host": host, "handle": handle }),
+                None => Value::Null,
+            },
+            "social.createActor" => actor::create_actor_document(&key(req, "account")?, &req["params"])?,
+            "social.verifyActor" => actor::verify_actor_document(&req["record"], req["id"].as_str(), req.get("handle"), crate::js::safe_int(&req["minSeq"]).unwrap_or(0))?,
+            "social.deviceKeyAt" => json!(actor::device_key_at(&req["actor"], &req["device"], &req["at"])),
+            "social.discoveryUrl" => json!(actor::discovery_url(s(req, "handle"), req["endpoint"].as_str().unwrap_or("/.well-known/commonveil/actor"))?),
+            "social.signActivity" => act::sign_activity(&device("device")?, s(req, "actor"), &req["activity"], req["encrypted"] == true, now()?)?,
+            "social.sessionActivity" => act::session_activity(&device("device")?, s(req, "actor"), &req["activity"], now()?)?,
+            "social.verifyActivity" => act::verify_activity(&req["record"], &req["actorDoc"], req["encrypted"] == true, now()?)?,
+            "social.verifySessionActivity" => act::verify_session_activity(&req["record"], &req["actorDoc"], s(req, "fromDevice"), now()?)?,
+            "social.activityDigest" => json!(act::activity_digest(&req["record"])?),
+            "social.lexiconProblems" => json!(lex::lexicon_problems(&req["lexicon"])),
+            "social.createLexicon" => lex::create_lexicon(&key(req, "account")?, &req["body"])?,
+            "social.verifyLexicon" => lex::verify_lexicon(&req["record"], &req["actorDoc"], crate::js::safe_int(&req["minRevision"]).unwrap_or(0))?,
+            "social.extensionProblems" => json!(lex::extension_problems(&req["object"], &req["lexicon"])),
+            "social.merkleRoot" => json!(repo::merkle_root(&strings(req, "ids"))),
+            "social.inclusionProof" => json!(repo::inclusion_proof(&strings(req, "ids"), int(req, "index")?)?),
+            "social.verifyInclusion" => json!(repo::verify_inclusion(s(req, "id"), int(req, "index")?, int(req, "count")?, &strings(req, "proof"), s(req, "root"))),
+            "social.createRepo" => repo::create_repo(s(req, "actor")),
+            "social.appendToRepo" => repo::append_to_repo(&req["repo"], &device("device")?, &req["record"], now()?)?,
+            "social.removeFromRepo" => repo::remove_from_repo(&req["repo"], &device("device")?, &req["id"], now()?)?,
+            "social.exportRepo" => repo::export_repo(&req["repo"], &req["actorRecord"]),
+            "social.verifyRepo" => repo::verify_repo(&req["exported"], req["id"].as_str(), crate::js::safe_int(&req["minSeq"]).unwrap_or(0), now()?)?,
+            "social.envelopeProblems" => json!(dl::envelope_problems(&req["envelope"])?),
+            "social.publicEnvelope" => dl::public_envelope(&req["record"])?,
+            "social.sessionTag" => json!(dl::session_tag(s(&req["state"], "ad"))?),
+            "social.sealDirect" => dl::seal_direct(req["sessions"].as_object().ok_or_else(|| Error::new("BAD_INPUT", "sessions"))?, &req["payload"])?,
+            "social.openDirectPayload" => dl::open_direct_payload(&from_b64u(s(req, "plaintext"))?, s(req, "fromDevice"), s(req, "fromActor"), crate::js::safe_int(&req["version"]).unwrap_or(1))?,
+            "social.newDeliveryToken" => json!(dl::new_delivery_token()),
+            "social.deliveryVerifier" => json!(dl::delivery_verifier(s(req, "token"))?),
+            "social.sealedBody" => dl::sealed_body(list(req, "items"))?,
+            "social.readSealedBody" => json!(dl::read_sealed_body(&req["body"], "BAD_MESSAGE")?),
+            "social.createAudience" => dl::create_audience(s(req, "actor"), req["kind"].as_str().unwrap_or("followers"))?,
+            "social.addMembers" => dl::add_members(&req["audience"], list(req, "members"))?,
+            "social.removeMembers" => {
+                let gone = strings(req, "actors");
+                dl::remove_members(&req["audience"], &|m: &Value| m["actor"].as_str().is_some_and(|a| gone.iter().any(|g| g == a)))?
+            }
+            "social.sealToAudience" => dl::seal_to_audience(&req["audience"], &req["record"])?,
+            "social.openAudience" => dl::open_audience(&req["view"], &req["envelope"])?,
+            "social.viewKey" => json!(dl::view_key(s(req, "audience"), s(req, "senderKey"))),
+            "social.deliveryBody" => dl::delivery_body(list(req, "items"))?,
+            "social.readDeliveryBody" => json!(dl::read_delivery_body(&req["body"])?),
+            _ => return Err(Error::new("BAD_INPUT", format!("unknown op \"{op}\""))),
+        })
+    };
+    op.starts_with("social.").then(run)
+}

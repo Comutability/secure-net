@@ -24,10 +24,11 @@ themselves.
 | Commons ledger (CVP-011) | `commons` | Histories with blocks made by both sides replay to identical states; 24 kinds of bad block get the same refusal codes; mandates, forks (and their evidence) and host failover are decided identically |
 | Governance (CVP-012) | `governance::vote`, `governance::debate` | Every counting method (majority, supermajority, approval, ranked) and secret ballots give identical results, including changed, clashing, late and tampered ballots; results recount; debates arrange into the same tree, thread and rejections |
 | Personas, migrations, consent, extensions and themes (CVP-001, CVP-014, CVP-008) | `portable`, `consent`, `extensions` | Links, notices, capsules, manifests and themes made by each side check out on the other, and every check gives the same answer and problems |
+| Social protocol (CVP-017 to CVP-020): actors, activities, lexicons, repositories, delivery | `social` (`social.*` operations) | `test/rust-social-interop.test.mjs`: every vocabulary check gives the same problems; actor documents, activities, lexicons and repositories made by each side verify on the other with the same refusals (rollback, wrong actor or device, tampered records, non-public records); sealed and plain delivery bodies, delivery tokens, audiences and direct payloads open on either side. The reference site and client run end to end in Rust (`tests/social_e2e.rs`): follows, followers-only, direct and public posts, likes, unfollowing, sealed sending and token rotation, version 1 clients, downgrade refusal, replayed, altered, late and misattributed deliveries, and moving site with id, followers and history kept |
 | Commonveil's cryptography (`src/crypto/*`) | `cv` (`cv.*` operations) | `test/rust-crypto-interop.test.mjs`: keys, seals, envelopes, key histories, certificates, proofs, item signatures, recovery backups, the passcode lock, owner keys, server key chains, grants, items and invite previews made by each side open or verify on the other, with the same refusal codes. The MLKEM768-P256 hybrid KEM matches `@noble/post-quantum` byte for byte with fixed randomness (`tests/vectors/cv-kem.json`); BIP-39 matches the reference vectors |
 
-Not yet ported: the social protocol (actors, activities, delivery, repositories, lexicons) and MLS
-groups. They come next, checked the same way.
+Not yet ported: MLS groups. Until then the Rust social client reports group envelopes as
+unreadable rather than guessing. MLS comes next, checked the same way.
 
 ## How it is used
 
@@ -75,6 +76,14 @@ CI runs all of these, and runs the interop test a second time against the WebAss
   guards removed in turn, 29 caught. The survivor is the ledger's second check that only a
   member or a moderator removes a member: the capability check before it already refuses every
   other case, in the JavaScript as here, so it can't be reached.
+- Mutation check of the social protocol: 27 guards (actor ids, handles and rollback; activity
+  actors, signing devices and signatures; inclusion-proof bounds; commit signatures, record
+  counts, public-only records, signed roots and rollback; lexicon authority and rollback; direct
+  payloads from the sending device, version 2-only features, sender keys and actor documents;
+  delivery tokens, request times, replays, digests and signatures; first-come handles; and
+  downgrade refusal) removed in turn, 26 caught. The survivor is the reference site's check
+  that a public activity comes from its author's own site: a site only hosts actor documents
+  for its own handles, so the actor lookup before it already fails for any other site.
 
 ## Known differences from the JavaScript
 
