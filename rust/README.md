@@ -17,9 +17,11 @@ themselves.
 | Session primitives (CVP-016) | `session::primitives` | Every derivation in `cvp-016-v1.json` (X25519, ML-KEM-768, handshake, root and chain steps, AES-256-GCM, safety number, link code) |
 | Accounts, devices, prekeys, bundles (CVP-016) | `session::keys` | Rust tests |
 | One-to-one sessions, version 1 (CVP-016) | `session::v1` | Conversations that alternate between the two implementations, including the same session state moving from one to the other mid-conversation (`test/rust-interop.test.mjs`) |
+| One-to-one sessions, version 2 (CVP-016 v2) | `session::v2` (`v2.*` operations) | Every derivation in `cvp-016-v2.json`; 90-message conversations between the two implementations with sides switching mid-conversation, late and skipped messages, and several ML-KEM exchanges completing; the same refusal codes (replays, tampering, wrong version, reused prekeys, untrusted keys, expired skipped keys) (`test/rust-session2-interop.test.mjs`) |
+| Sender keys and history transfer (CVP-016) | `session::group`, `session::history` | Group messages and history transfers made by each side open on the other, with the same refusals |
 | Commonveil's cryptography (`src/crypto/*`) | `cv` (`cv.*` operations) | `test/rust-crypto-interop.test.mjs`: keys, seals, envelopes, key histories, certificates, proofs, item signatures, recovery backups, the passcode lock, owner keys, server key chains, grants, items and invite previews made by each side open or verify on the other, with the same refusal codes. The MLKEM768-P256 hybrid KEM matches `@noble/post-quantum` byte for byte with fixed randomness (`tests/vectors/cv-kem.json`); BIP-39 matches the reference vectors |
 
-Not yet ported: sessions version 2, sender keys and history transfer, the social protocol,
+Not yet ported: the social protocol,
 groups, the commons ledger, governance, private tokens, consent, extensions, and the site-to-site
 wire. They come next, in that rough order, each checked the same way.
 
@@ -42,7 +44,7 @@ From Rust, use the modules directly.
 cd rust
 cargo test                       # the Rust tests, against spec/vectors
 cargo build --example cli        # then, from the repository root:
-node --test test/rust-interop.test.mjs test/rust-crypto-interop.test.mjs
+node --test test/rust-interop.test.mjs test/rust-crypto-interop.test.mjs test/rust-session2-interop.test.mjs
 cargo build --release --target wasm32-unknown-unknown -p secure-net-wasm
 ```
 
@@ -60,6 +62,11 @@ CI runs all of these, and runs the interop test a second time against the WebAss
   made a test fail. The 19th, the explicit `0x04` prefix check on P-256 public keys, is already
   enforced by the SEC 1 decoder underneath (a test confirms the `0x06`/`0x07` forms are refused
   either way), so it stays as defence in depth.
+- Mutation check of sessions v2, sender keys and history transfer: 14 guards (the ML-KEM
+  exchange staying in step, replays in the current and older chains, the skipped-key expiry,
+  header keys bound to their chain, the skip limit, key piece sizes, untrusted sending devices,
+  dropping the handshake once answered, group signatures, replays and skip limits, history
+  digests and chunk counts) were removed in turn; all 14 made a test fail.
 
 ## Known differences from the JavaScript
 
