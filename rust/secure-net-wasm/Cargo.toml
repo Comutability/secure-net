@@ -1,0 +1,16 @@
+[package]
+name = "secure-net-wasm"
+version = "0.1.0"
+description = "Secure Net in Rust, compiled to WebAssembly for browsers, Node.js and Deno."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+secure-net-core = { path = "../secure-net-core" }
+wasm-bindgen = "0.2"
