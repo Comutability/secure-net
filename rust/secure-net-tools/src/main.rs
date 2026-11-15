@@ -6,6 +6,7 @@
 //! cargo run -p secure-net-tools -- standards           check the standard and the code agree
 //! cargo run -p secure-net-tools -- standards --write   also regenerate spec/REGISTRIES.md and the spec index
 //! cargo run -p secure-net-tools -- package             build the npm package (pkg/web and pkg/node)
+//! cargo run -p secure-net-tools -- tag                 tag every version (vX.Y.Z) that isn't tagged yet
 //! ```
 //!
 //! The vectors in `spec/vectors` are checked by `cargo test` (`secure-net-core/tests/vectors*.rs`).
@@ -34,8 +35,9 @@ fn main() -> ExitCode {
         Some("manifest") => manifest::run(flag("--check")),
         Some("standards") => standards::run(flag("--write")),
         Some("package") => package::run(),
+        Some("tag") => tag::run(),
         _ => {
-            eprintln!("usage: secure-net-tools manifest [--check] | standards [--write] | package");
+            eprintln!("usage: secure-net-tools manifest [--check] | standards [--write] | package | tag");
             ExitCode::from(2)
         }
     }
@@ -99,6 +101,51 @@ mod manifest {
             let n = serde_json::from_str::<Value>(&want).unwrap()["files"].as_object().unwrap().len();
             println!("Wrote secure-net.manifest.json ({n} files).");
         }
+        ExitCode::SUCCESS
+    }
+}
+
+mod tag {
+    //! Version tags: each version in package.json's history gets an annotated tag `vX.Y.Z` at the
+    //! last commit that carried it (the version as people last had it). Tags already there are
+    //! left alone. Push them with `git push origin --tags`.
+    use super::*;
+    use std::process::Command;
+
+    fn git(args: &[&str]) -> Option<String> {
+        let out = Command::new("git").current_dir(root()).args(args).output().ok()?;
+        out.status.success().then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+    }
+
+    pub fn run() -> ExitCode {
+        let Some(log) = git(&["log", "--format=%H", "--", "package.json"]) else {
+            eprintln!("not a git repository");
+            return ExitCode::FAILURE;
+        };
+        let existing: BTreeSet<String> = git(&["tag", "--list", "v*"]).unwrap_or_default().lines().map(String::from).collect();
+        // Newest first, so the first commit seen for a version is its last.
+        let mut last: Vec<(String, String)> = Vec::new();
+        for commit in log.lines() {
+            let Some(text) = git(&["show", &format!("{commit}:package.json")]) else { continue };
+            let Some(v) = serde_json::from_str::<Value>(&text).ok().and_then(|p| p["version"].as_str().map(String::from)) else { continue };
+            if !last.iter().any(|(x, _)| *x == v) {
+                last.push((v, commit.to_string()));
+            }
+        }
+        let mut made = 0;
+        for (v, commit) in last.iter().rev() {
+            let tag = format!("v{v}");
+            if existing.contains(&tag) {
+                continue;
+            }
+            if git(&["tag", "-a", &tag, commit, "-m", &format!("Secure Net {v}")]).is_none() {
+                eprintln!("couldn't tag {tag}");
+                return ExitCode::FAILURE;
+            }
+            println!("Tagged {tag} at {}", &commit[..7]);
+            made += 1;
+        }
+        println!("{}", if made == 0 { "Every version is tagged." } else { "Now push them: git push origin --tags" });
         ExitCode::SUCCESS
     }
 }
