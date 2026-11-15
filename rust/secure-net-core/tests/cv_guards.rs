@@ -47,7 +47,7 @@ fn envelope_shapes_are_refused() {
 fn reset_accounts_and_foreign_certificates_are_refused() {
     let v1 = create_key_version(1, NOW).unwrap();
     let v2 = create_key_version(2, NOW).unwrap();
-    let s1 = make_account_statement("u1", &v1, &v1["ecdh_pub"].as_str().unwrap().to_string(), "", &v1, NOW).unwrap();
+    let s1 = make_account_statement("u1", &v1, v1["ecdh_pub"].as_str().unwrap(), "", &v1, NOW).unwrap();
     // Version 2 signs itself: an account reset from another device.
     let s2 = make_account_statement("u1", &v2, v1["ecdh_pub"].as_str().unwrap(), "", &v2, NOW).unwrap();
     let chain = verify_account_chain("u1", &[s1.clone(), s2]).unwrap();
