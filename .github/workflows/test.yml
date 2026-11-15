@@ -31,10 +31,13 @@ jobs:
       - name: Rust tests (against spec/vectors)
         working-directory: rust
         run: cargo test --locked
+      - name: Lints (warnings are errors; unsafe code is forbidden in the core)
+        working-directory: rust
+        run: rustup component add clippy && cargo clippy --locked --all-targets -- -D warnings
       - name: Rust against the JavaScript, message by message
         run: |
           (cd rust && cargo build --locked --example cli)
-          node --test test/rust-interop.test.mjs
+          node --test test/rust-interop.test.mjs test/rust-crypto-interop.test.mjs
       - name: WebAssembly build
         working-directory: rust
         run: cargo build --locked --release --target wasm32-unknown-unknown -p secure-net-wasm
@@ -45,4 +48,4 @@ jobs:
           wasm-bindgen --target nodejs --out-dir rust/pkg-node rust/target/wasm32-unknown-unknown/release/secure_net_wasm.wasm
           # wasm-bindgen's Node.js output is CommonJS; this repository's package.json says ES modules.
           echo '{ "type": "commonjs" }' > rust/pkg-node/package.json
-          SECURE_NET_RUST_WASM="$PWD/rust/pkg-node/secure_net_wasm.js" node --test test/rust-interop.test.mjs
+          SECURE_NET_RUST_WASM="$PWD/rust/pkg-node/secure_net_wasm.js" node --test test/rust-interop.test.mjs test/rust-crypto-interop.test.mjs

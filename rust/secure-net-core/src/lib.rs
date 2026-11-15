@@ -15,10 +15,12 @@
 //!
 //! Every protocol object is the same JSON the JavaScript library uses, so state saved by one can
 //! be loaded by the other.
+#![forbid(unsafe_code)]
 
 pub mod api;
 pub mod bytes;
 pub mod canonical;
+pub mod cv;
 pub mod error;
 pub mod session;
 pub mod signed;
