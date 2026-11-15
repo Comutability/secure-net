@@ -44,7 +44,9 @@ fn kem_error() -> Error {
 
 /// The first 32-byte window of `seed` that is a valid non-zero P-256 scalar.
 fn curve_secret(seed: &[u8]) -> Result<SecretKey> {
-    seed.chunks_exact(32)
+    let (windows, _) = seed.as_chunks::<32>();
+    windows
+        .iter()
         .find_map(|w| SecretKey::from_slice(w).ok())
         .ok_or_else(|| Error::new("KEM_FAILED", "rejection sampling failed"))
 }

@@ -5,7 +5,7 @@
 //! message, and the sender signs each message with Ed25519 so members can't impersonate each other.
 use std::collections::BTreeMap;
 
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signer, SigningKey};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
@@ -105,9 +105,7 @@ pub fn group_encrypt(key: &SenderKey, plaintext: &[u8]) -> Result<(SenderKey, Va
 }
 
 fn verify(sig: &str, msg: &[u8], pk: &str) -> bool {
-    let (Ok(sig), Ok(pk)) = (from_b64u(sig), from_b64u(pk)) else { return false };
-    let (Ok(sig), Ok(pk)) = (<[u8; 64]>::try_from(sig.as_slice()), <[u8; 32]>::try_from(pk.as_slice())) else { return false };
-    VerifyingKey::from_bytes(&pk).is_ok_and(|vk| vk.verify(msg, &Signature::from_bytes(&sig)).is_ok())
+    crate::ed25519::verify_b64u(pk, sig, msg)
 }
 
 pub fn group_decrypt(state: &Received, m: &Value) -> Result<(Received, Vec<u8>)> {

@@ -3,7 +3,7 @@
 //! The signature covers `secure-net/<kind>/v1`, a newline, then the canonical JSON of the body,
 //! so a signature made for one kind of record can never pass as another. A quantum-resistant key
 //! signs twice, Ed25519 and ML-DSA-65 (FIPS 204, empty context), and both must verify.
-use ed25519_dalek::{Signer, Verifier};
+use ed25519_dalek::Signer;
 use ml_dsa::{EncodedSignature, EncodedVerifyingKey, Keypair, MlDsa65, B32};
 use serde_json::{json, Map, Value};
 
@@ -96,6 +96,17 @@ impl SigningKey {
     }
 }
 
+/// The ML-DSA-65 public key for a 32-byte seed.
+pub fn mldsa_public(seed: &[u8]) -> Result<Vec<u8>> {
+    Ok(mldsa_from_seed(seed)?.verifying_key().encode().as_slice().to_vec())
+}
+
+/// A hedged ML-DSA-65 signature (empty context) with the key from a 32-byte seed.
+pub fn mldsa_sign(seed: &[u8], msg: &[u8]) -> Result<Vec<u8>> {
+    let pq = mldsa_from_seed(seed)?;
+    Ok(pq.expanded_key().sign_internal(&[&[0u8, 0u8], msg], &B32::from(random::<32>())).encode().as_slice().to_vec())
+}
+
 fn is_kind(kind: &str) -> bool {
     // ^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)+$
     let mut parts = kind.split('.');
@@ -128,13 +139,11 @@ pub fn cosign(record: &Value, key: &SigningKey) -> Result<Value> {
 }
 
 fn verify_ed(sig: &str, bytes: &[u8], public: &str) -> bool {
-    let (Ok(sig), Ok(public)) = (from_b64u(sig), from_b64u(public)) else { return false };
-    let (Ok(sig), Ok(public)) = (<[u8; 64]>::try_from(sig.as_slice()), <[u8; 32]>::try_from(public.as_slice())) else { return false };
-    let Ok(key) = ed25519_dalek::VerifyingKey::from_bytes(&public) else { return false };
-    key.verify(bytes, &ed25519_dalek::Signature::from_bytes(&sig)).is_ok()
+    crate::ed25519::verify_b64u(public, sig, bytes)
 }
 
-fn verify_mldsa(sig: &str, bytes: &[u8], public: &str) -> bool {
+/// An ML-DSA-65 signature check (empty context), base64url signature and key.
+pub fn verify_mldsa(sig: &str, bytes: &[u8], public: &str) -> bool {
     let (Ok(sig), Ok(public)) = (from_b64u(sig), from_b64u(public)) else { return false };
     let (Ok(sig), Ok(public)) = (EncodedSignature::<MlDsa65>::try_from(sig.as_slice()), EncodedVerifyingKey::<MlDsa65>::try_from(public.as_slice())) else { return false };
     let Some(sig) = ml_dsa::Signature::<MlDsa65>::decode(&sig) else { return false };

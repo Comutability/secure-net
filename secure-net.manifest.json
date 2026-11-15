@@ -95,6 +95,7 @@
     "test/rust-crypto-interop.test.mjs": "r4YkQH9Fn-5C4v2iGjkJEd0Ahog_2Yp9zCdcs5gxRMU",
     "test/rust-interop.test.mjs": "ZylCSvSmJjpy_ux7PmjqJgOYx8tah9IDAUlriJLItY4",
     "test/rust-session2-interop.test.mjs": "aEzw89-ZyS5gcdJmicwuwUtQIEKEtp24e2t4jISMGPc",
+    "test/rust-wire-ledger-interop.test.mjs": "YsKsurpPjtCQ87xCZnzKA7hzGiCgyP3VIomKnRTbEnY",
     "test/session.test.mjs": "eXs2FolJghrr4aHVSn-VZmitTz5vkCa94ullFAG9sUo",
     "test/session2.test.mjs": "XVvNgfmjLDq7aS_HU9bX34lbK9j8Ynqz67M6mEiPC_E",
     "test/social.test.mjs": "dhWNZ_wXawJivl2XsHngEU8ujZoK1mbF00-p-LtI5EQ",
