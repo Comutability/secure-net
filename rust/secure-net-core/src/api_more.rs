@@ -227,3 +227,48 @@ pub fn call_social(op: &str, req: &Value) -> Option<Result<Value>> {
     };
     op.starts_with("social.").then(run)
 }
+
+/// MLS groups (CVP-022).
+pub fn call_groups(op: &str, req: &Value) -> Option<Result<Value>> {
+    use crate::groups::mls as g;
+    use crate::session::keys::Device;
+    if !op.starts_with("groups.") {
+        return None;
+    }
+    let s = |k: &str| req[k].as_str().unwrap_or("");
+    let actors = || if req["actors"].is_object() { req["actors"].clone() } else { json!({}) };
+    let run = || -> Result<Value> {
+        Ok(match op {
+            "groups.newGroupId" => json!(g::new_group_id()),
+            "groups.createKeyPackage" => {
+                let device: Device = serde_json::from_value(req["device"].clone()).map_err(|e| Error::new("BAD_INPUT", format!("device: {e}")))?;
+                g::create_key_package(&device, s("actor"))?
+            }
+            "groups.keyPackageOwner" => g::key_package_owner(s("published"))?,
+            "groups.createGroup" => g::create_group(req["group"].as_str(), &req["keyPackage"])?,
+            "groups.describe" => g::describe(&req["state"])?,
+            "groups.isCommitter" => json!(g::is_committer(&req["state"])?),
+            "groups.addMembers" => g::add_members(&req["state"], req["keyPackages"].as_array().map(Vec::as_slice).unwrap_or(&[]), &actors())?,
+            "groups.removeMembers" => {
+                // Who goes: members whose actor is in `actors_out` or whose device is in `devices_out`.
+                let pick = |k: &str| req[k].as_array().cloned().unwrap_or_default();
+                let (a, d) = (pick("actorsOut"), pick("devicesOut"));
+                g::remove_members(&req["state"], &|m| a.contains(&m["actor"]) || d.contains(&m["device"]))?
+            }
+            "groups.replaceMember" => g::replace_member(&req["state"], s("keyPackage"), &actors())?,
+            "groups.refresh" => g::refresh(&req["state"])?,
+            "groups.join" => g::join(s("welcome"), &req["keyPackage"], &actors())?,
+            "groups.seal" => {
+                let bytes = match req.get("bytes") {
+                    Some(b) => crate::bytes::from_b64u(b.as_str().unwrap_or(""))?,
+                    None => s("plaintext").as_bytes().to_vec(),
+                };
+                g::seal(&req["state"], &bytes)?
+            }
+            "groups.open" => g::open(&req["state"], s("message"), &actors())?,
+            "groups.validateCredential" => json!(g::validate_credential_json(s("identity"), s("key"), &actors())?),
+            _ => return Err(Error::new("BAD_INPUT", format!("Unknown operation {op}"))),
+        })
+    };
+    Some(run())
+}

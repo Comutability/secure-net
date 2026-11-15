@@ -1,9 +1,16 @@
 [workspace]
 resolver = "2"
 members = ["secure-net-core", "secure-net-wasm"]
+exclude = ["vendor"]
 
 [workspace.package]
 edition = "2021"
 license = "AGPL-3.0-only"
 repository = "https://github.com/Comutability/secure-net"
 rust-version = "1.88"
+
+# OpenMLS with one added ciphersuite (MLS_256_XWING_AES256GCM_SHA512_MLDSA87, as ts-mls numbers
+# it). See vendor/*/SECURE_NET_PATCH.md.
+[patch.crates-io]
+openmls_traits = { path = "vendor/openmls_traits" }
+openmls_rust_crypto = { path = "vendor/openmls_rust_crypto" }

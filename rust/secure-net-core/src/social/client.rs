@@ -59,6 +59,11 @@ pub struct SocialClient {
     pub prekeys: Map<String, Value>,
     pub actor_record: Value,
     pub now: i64,
+    /// MLS groups (CVP-022): group id -> saved state; see `crate::groups::client`.
+    pub groups: HashMap<String, Value>,
+    /// Unused key package secrets.
+    pub key_packages: Vec<Value>,
+    pub groups_enabled: bool,
 }
 
 impl SocialClient {
@@ -102,6 +107,9 @@ impl SocialClient {
             prekeys: Map::new(),
             actor_record: Value::Null,
             now,
+            groups: HashMap::new(),
+            key_packages: Vec::new(),
+            groups_enabled: false,
         })
     }
 
@@ -420,7 +428,12 @@ impl SocialClient {
                 let b = verify_activity(&r["activity"], &doc, true, self.now)?;
                 return self.handle(net, &b, "followers", false).map(Some);
             }
-            Some("group") => return Ok(Some(json!({ "kind": "unreadable", "reason": "this client doesn't do groups" }))),
+            Some("group") => {
+                if !self.groups_enabled {
+                    return Ok(Some(json!({ "kind": "unreadable", "reason": "this client doesn't do groups" })));
+                }
+                return self.on_group_envelope(net, env).map(Some);
+            }
             _ => {}
         }
         if env["device"] != self.device.kid.as_str() {
@@ -437,6 +450,11 @@ impl SocialClient {
         }
         for v in p["senderKeys"].as_array().cloned().unwrap_or_default() {
             self.views.insert(view_key(v["group"].as_str().unwrap_or(""), v["id"].as_str().unwrap_or("")), v);
+        }
+        if self.groups_enabled {
+            for g in p["groups"].as_array().cloned().unwrap_or_default() {
+                self.on_welcome(&g, &from_actor)?;
+            }
         }
         let doc = self.known.get(&from_actor).cloned().unwrap_or(Value::Null);
         if let Some(u) = p.get("unsigned") {
@@ -510,7 +528,7 @@ impl SocialClient {
         Ok((peer, r.plaintext, 2))
     }
 
-    fn handle(&mut self, net: &mut MemoryNetwork, a: &Value, how: &str, deniable: bool) -> Result<Value> {
+    pub(crate) fn handle(&mut self, net: &mut MemoryNetwork, a: &Value, how: &str, deniable: bool) -> Result<Value> {
         let actor = a["actor"].as_str().unwrap_or("").to_string();
         let author = self.known.get(&actor).cloned().unwrap_or(Value::Null);
         let who = format!("@{}", crate::js::show(author.get("handle")));
