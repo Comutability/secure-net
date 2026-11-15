@@ -1,7 +1,7 @@
 //! The owner key (`src/crypto/owner.js`): the recovery phrase's 256 bits as one string
 //! (`cvkey1…` with a 4-byte checksum), and the Ed25519 key both derive, which proves an account
 //! is yours by signing a site's challenge.
-use ed25519_dalek::{Signature, Signer, SigningKey, Verifier, VerifyingKey};
+use ed25519_dalek::{Signer, SigningKey};
 use zeroize::Zeroizing;
 
 use super::primitives::hkdf32;
@@ -64,13 +64,9 @@ pub fn sign_owner(key: &SigningKey, host: &str, purpose: &str, challenge: &str) 
     b64u(&key.sign(owner_text(host, purpose, challenge).as_bytes()).to_bytes())
 }
 
-/// What the server checks. Honest signatures verify here and in the JavaScript; see the README
-/// for how Ed25519 edge cases differ between ed25519-dalek and noble.
+/// What the server checks (ZIP-215 rules, as the JavaScript).
 pub fn verify_owner(public_b64u: &str, signature_b64u: &str, host: &str, purpose: &str, challenge: &str) -> bool {
-    let (Ok(pk), Ok(sig)) = (from_b64u(public_b64u), from_b64u(signature_b64u)) else { return false };
-    let (Ok(pk), Ok(sig)) = (<[u8; 32]>::try_from(pk.as_slice()), <[u8; 64]>::try_from(sig.as_slice())) else { return false };
-    let Ok(vk) = VerifyingKey::from_bytes(&pk) else { return false };
-    vk.verify(owner_text(host, purpose, challenge).as_bytes(), &Signature::from_bytes(&sig)).is_ok()
+    crate::ed25519::verify_b64u(public_b64u, signature_b64u, owner_text(host, purpose, challenge).as_bytes())
 }
 
 #[cfg(test)]

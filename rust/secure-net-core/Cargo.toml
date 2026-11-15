@@ -20,13 +20,15 @@ aes-gcm = "0.11"
 base64 = "0.23"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
-getrandom = "0.4"
-p256 = { version = "0.14", default-features = false, features = ["ecdh", "ecdsa", "sha256", "pkcs8", "arithmetic", "std"] }
+getrandom = { version = "0.4", features = ["sys_rng"] }
+p256 = { version = "0.14", default-features = false, features = ["ecdh", "ecdsa", "sha256", "pkcs8", "arithmetic", "std", "oprf"] }
 sha3 = "0.12"
 shake = "0.1"
 pbkdf2 = { version = "0.13", default-features = false, features = ["hmac"] }
 unicode-normalization = { version = "0.1", default-features = false, features = ["std"] }
 zeroize = "1"
+ed25519-zebra = { version = "5", default-features = false, features = ["std"] }
+voprf = { version = "=0.6.0-pre.2", default-features = false, features = ["alloc"] }
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 getrandom = { version = "0.4", features = ["wasm_js"] }

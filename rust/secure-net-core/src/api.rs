@@ -22,6 +22,9 @@ pub fn call(req: &Value) -> Result<Value, Error> {
     if let Some(reply) = crate::cv::api::call(req["op"].as_str().unwrap_or(""), req) {
         return reply;
     }
+    if let Some(reply) = crate::api_more::call(req["op"].as_str().unwrap_or(""), req) {
+        return reply;
+    }
     let now = || req["now"].as_i64().ok_or_else(|| Error::new("BAD_INPUT", "now: milliseconds since 1970 are required"));
     Ok(match req["op"].as_str().unwrap_or("") {
         "canonical" => json!(canonical_json(&req["value"])?),

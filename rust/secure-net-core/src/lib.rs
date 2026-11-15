@@ -18,12 +18,22 @@
 #![forbid(unsafe_code)]
 
 pub mod api;
+pub mod api_more;
 pub mod bytes;
 pub mod canonical;
+pub mod commons;
+pub mod consent;
 pub mod cv;
+pub mod ed25519;
+pub mod js;
+pub mod portable;
+pub mod wire;
 pub mod error;
+pub mod extensions;
+pub mod governance;
 pub mod session;
 pub mod signed;
+pub mod tokens;
 
 pub use error::Error;
 

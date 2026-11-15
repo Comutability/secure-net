@@ -19,11 +19,15 @@ themselves.
 | One-to-one sessions, version 1 (CVP-016) | `session::v1` | Conversations that alternate between the two implementations, including the same session state moving from one to the other mid-conversation (`test/rust-interop.test.mjs`) |
 | One-to-one sessions, version 2 (CVP-016 v2) | `session::v2` (`v2.*` operations) | Every derivation in `cvp-016-v2.json`; 90-message conversations between the two implementations with sides switching mid-conversation, late and skipped messages, and several ML-KEM exchanges completing; the same refusal codes (replays, tampering, wrong version, reused prekeys, untrusted keys, expired skipped keys) (`test/rust-session2-interop.test.mjs`) |
 | Sender keys and history transfer (CVP-016) | `session::group`, `session::history` | Group messages and history transfers made by each side open on the other, with the same refusals |
+| Site-to-site wire (CVP-005, CVP-008, CVP-015) | `wire::federation`, `wire::features`, `wire::sealed` | Endpoint rules, host and private-address rules, signed requests (byte-identical signatures), feature negotiation, and the P-256 + ML-KEM-768 / ML-DSA-65 sealed relay, with requests and replies sealed by each side opening on the other (`test/rust-wire-ledger-interop.test.mjs`) |
+| Private tokens (CVP-013) | `tokens` (the `voprf` crate, RFC 9497 P256-SHA256) | The same issuer keys from a seed; tokens requested from one side and issued by the other; the same refusals for bad proofs, forged and spent tokens |
+| Commons ledger (CVP-011) | `commons` | Histories with blocks made by both sides replay to identical states; 24 kinds of bad block get the same refusal codes; mandates, forks (and their evidence) and host failover are decided identically |
+| Governance (CVP-012) | `governance::vote`, `governance::debate` | Every counting method (majority, supermajority, approval, ranked) and secret ballots give identical results, including changed, clashing, late and tampered ballots; results recount; debates arrange into the same tree, thread and rejections |
+| Personas, migrations, consent, extensions and themes (CVP-001, CVP-014, CVP-008) | `portable`, `consent`, `extensions` | Links, notices, capsules, manifests and themes made by each side check out on the other, and every check gives the same answer and problems |
 | Commonveil's cryptography (`src/crypto/*`) | `cv` (`cv.*` operations) | `test/rust-crypto-interop.test.mjs`: keys, seals, envelopes, key histories, certificates, proofs, item signatures, recovery backups, the passcode lock, owner keys, server key chains, grants, items and invite previews made by each side open or verify on the other, with the same refusal codes. The MLKEM768-P256 hybrid KEM matches `@noble/post-quantum` byte for byte with fixed randomness (`tests/vectors/cv-kem.json`); BIP-39 matches the reference vectors |
 
-Not yet ported: the social protocol,
-groups, the commons ledger, governance, private tokens, consent, extensions, and the site-to-site
-wire. They come next, in that rough order, each checked the same way.
+Not yet ported: the social protocol (actors, activities, delivery, repositories, lexicons) and MLS
+groups. They come next, checked the same way.
 
 ## How it is used
 
@@ -44,7 +48,7 @@ From Rust, use the modules directly.
 cd rust
 cargo test                       # the Rust tests, against spec/vectors
 cargo build --example cli        # then, from the repository root:
-node --test test/rust-interop.test.mjs test/rust-crypto-interop.test.mjs test/rust-session2-interop.test.mjs
+node --test test/rust-interop.test.mjs test/rust-crypto-interop.test.mjs test/rust-session2-interop.test.mjs test/rust-wire-ledger-interop.test.mjs
 cargo build --release --target wasm32-unknown-unknown -p secure-net-wasm
 ```
 
@@ -67,14 +71,21 @@ CI runs all of these, and runs the interop test a second time against the WebAss
   header keys bound to their chain, the skip limit, key piece sizes, untrusted sending devices,
   dropping the handshake once answered, group signatures, replays and skip limits, history
   digests and chunk counts) were removed in turn; all 14 made a test fail.
+- Mutation check of the wire, tokens, ledger, governance, identity, consent and extensions: 30
+  guards removed in turn, 29 caught. The survivor is the ledger's second check that only a
+  member or a moderator removes a member: the capability check before it already refuses every
+  other case, in the JavaScript as here, so it can't be reached.
 
 ## Known differences from the JavaScript
 
-- **Ed25519 verification rules.** The JavaScript (noble) accepts signatures under ZIP-215 rules;
-  `ed25519-dalek` uses its own rules. Honest signatures verify on both, but a deliberately
-  malformed signature could be accepted by one and refused by the other. That matters wherever
-  several parties must agree, such as the commons ledger, and must be settled (and specified)
-  before the ledger is ported.
+- **Ed25519 verification rules: now the same.** Every Ed25519 check in Rust uses ZIP-215 rules
+  (`ed25519-zebra`), the rules noble applies by default, so a crafted signature can't be
+  accepted by one implementation and refused by the other. All 196 small-order cases ZIP-215
+  was written for give the same answer on both sides.
+- **Times.** Rules that compare times use `Date.parse`. Rust matches V8 (Node.js, Chrome) for
+  every ISO 8601 form, including its quirks (any day from 1 to 31 rolls over, `24:00`, lower-case
+  `t` and `z`, `+0100`), and refuses times with no zone, which JavaScript reads as the machine's
+  local time. Records should carry `toISOString()` times, which both read identically.
 - **Secrets in memory.** The protocol port keeps secret keys in JSON strings, as the
   JavaScript does, so they are not wiped after use. The Commonveil port wipes the secrets it
   derives (content keys, shared secrets, KEM seeds, lock keys, recovery keys) with `zeroize`,
