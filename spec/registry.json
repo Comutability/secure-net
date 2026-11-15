@@ -1,5 +1,5 @@
 {
-  "about": "The registries of the Commonveil Protocol (CVP-000, section 7). Normative. Changed only by a SNIP, in the same pull request as the part text and code. scripts/standards.mjs checks the reference code against this file and writes spec/REGISTRIES.md and the index in spec/README.md from it.",
+  "about": "The registries of the Commonveil Protocol (CVP-000, section 7). Normative. Changed only by a SNIP, in the same pull request as the part text and code. rust/secure-net-tools checks the reference code against this file and writes spec/REGISTRIES.md and the index in spec/README.md from it.",
   "release": "0.6.0",
   "partStatuses": [
     "Reserved",
@@ -26,7 +26,7 @@
       "features": [],
       "dependsOn": [],
       "code": [
-        "scripts/standards.mjs"
+        "rust/secure-net-tools"
       ],
       "vectors": []
     },
@@ -872,35 +872,35 @@
       "name": "Ed25519",
       "use": "classical signatures on signed records and site requests",
       "part": "CVP-002",
-      "code": "core/signed.js ALG",
+      "code": "rust/secure-net-core/src/signed.rs ALG",
       "status": "active"
     },
     {
       "name": "Ed25519+ML-DSA-65",
       "use": "quantum-resistant signatures on signed records; both must verify",
       "part": "CVP-015",
-      "code": "core/signed.js HYBRID_ALG",
+      "code": "rust/secure-net-core/src/signed.rs HYBRID_ALG",
       "status": "active"
     },
     {
       "name": "p256-mlkem768+mldsa65",
       "use": "sealed relay between sites",
       "part": "CVP-015",
-      "code": "wire/sealed.js SUITE",
+      "code": "rust/secure-net-core/src/wire/sealed.rs SUITE",
       "status": "active"
     },
     {
       "name": "P256-SHA256",
       "use": "RFC 9497 VOPRF tokens",
       "part": "CVP-013",
-      "code": "tokens/voprf.js SUITE",
+      "code": "rust/secure-net-core/src/tokens/mod.rs SUITE",
       "status": "active"
     },
     {
       "name": "MLKEM768-P256",
       "use": "hybrid sealing in the older envelope",
       "part": "CVP-003",
-      "code": "crypto/kem.js KEM_NAME",
+      "code": "rust/secure-net-core/src/cv/kem.rs KEM_NAME",
       "status": "active"
     }
   ],

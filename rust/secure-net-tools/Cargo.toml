@@ -1,0 +1,15 @@
+[package]
+name = "secure-net-tools"
+version = "0.1.0"
+description = "Secure Net's maintenance tools: the release manifest and the standards check."
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+publish = false
+
+[dependencies]
+secure-net-core = { path = "../secure-net-core" }
+serde_json = { version = "1", features = ["preserve_order"] }
+sha2 = "0.11"
+base64 = "0.23"

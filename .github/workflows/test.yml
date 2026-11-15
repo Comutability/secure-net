@@ -12,9 +12,7 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - run: npm test
-      - run: node scripts/manifest.mjs --check
       - run: node scripts/vectors.mjs --check
-      - run: node scripts/standards.mjs
       - run: node examples/two-party.mjs
       - run: node examples/social.mjs
       - run: node examples/groups.mjs
@@ -31,6 +29,9 @@ jobs:
       - name: Rust tests (against spec/vectors)
         working-directory: rust
         run: cargo test --locked
+      - name: The standard and the code agree; the release manifest is current
+        working-directory: rust
+        run: cargo run --locked -p secure-net-tools -- standards && cargo run --locked -p secure-net-tools -- manifest --check
       - name: Lints (warnings are errors; unsafe code is forbidden in the core)
         working-directory: rust
         run: rustup component add clippy && cargo clippy --locked --all-targets -- -D warnings

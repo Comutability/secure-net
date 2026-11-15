@@ -1,6 +1,6 @@
 # Registries
 
-Generated from [`registry.json`](registry.json) by `node scripts/standards.mjs --write`. Don't edit this
+Generated from [`registry.json`](registry.json) by `cargo run -p secure-net-tools -- standards --write`. Don't edit this
 file: change `registry.json` through a SNIP (CVP-000, section 7), then regenerate it.
 
 Release 0.6.0.
