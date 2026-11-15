@@ -25,10 +25,20 @@ themselves.
 | Governance (CVP-012) | `governance::vote`, `governance::debate` | Every counting method (majority, supermajority, approval, ranked) and secret ballots give identical results, including changed, clashing, late and tampered ballots; results recount; debates arrange into the same tree, thread and rejections |
 | Personas, migrations, consent, extensions and themes (CVP-001, CVP-014, CVP-008) | `portable`, `consent`, `extensions` | Links, notices, capsules, manifests and themes made by each side check out on the other, and every check gives the same answer and problems |
 | Social protocol (CVP-017 to CVP-020): actors, activities, lexicons, repositories, delivery | `social` (`social.*` operations) | `test/rust-social-interop.test.mjs`: every vocabulary check gives the same problems; actor documents, activities, lexicons and repositories made by each side verify on the other with the same refusals (rollback, wrong actor or device, tampered records, non-public records); sealed and plain delivery bodies, delivery tokens, audiences and direct payloads open on either side. The reference site and client run end to end in Rust (`tests/social_e2e.rs`): follows, followers-only, direct and public posts, likes, unfollowing, sealed sending and token rotation, version 1 clients, downgrade refusal, replayed, altered, late and misattributed deliveries, and moving site with id, followers and history kept |
+| MLS groups (CVP-022) | `groups::mls`, `groups::client` (`groups.*` operations) | OpenMLS, with one ciphersuite added (below). `test/rust-groups-interop.test.mjs`: groups that mix Rust (OpenMLS) and JavaScript (ts-mls) devices, with either side as committer; adds, removals, refreshes, replacements and newcomers lock out exactly the right people on both; both refuse commits and proposals from anyone but the committer, unverifiable key packages and replayed or bent messages, and the credential check gives the same answer. `tests/groups.rs` and `tests/groups_e2e.rs` mirror `test/groups.test.mjs`, including posting to groups through two sites with the reference client |
 | Commonveil's cryptography (`src/crypto/*`) | `cv` (`cv.*` operations) | `test/rust-crypto-interop.test.mjs`: keys, seals, envelopes, key histories, certificates, proofs, item signatures, recovery backups, the passcode lock, owner keys, server key chains, grants, items and invite previews made by each side open or verify on the other, with the same refusal codes. The MLKEM768-P256 hybrid KEM matches `@noble/post-quantum` byte for byte with fixed randomness (`tests/vectors/cv-kem.json`); BIP-39 matches the reference vectors |
 
-Not yet ported: MLS groups. Until then the Rust social client reports group envelopes as
-unreadable rather than guessing. MLS comes next, checked the same way.
+Everything in the protocol is now ported.
+
+### The OpenMLS patch
+
+Secure Net's groups use `MLS_256_XWING_AES256GCM_SHA512_MLDSA87`: X-Wing for the key tree,
+AES-256-GCM, SHA-512 and ML-DSA-87 signatures, with the code point ts-mls gives it (0x0057). The
+IETF hasn't assigned that combination a number yet, and OpenMLS doesn't list it, though it has
+every piece. `rust/vendor/openmls_traits` and `rust/vendor/openmls_rust_crypto` are copies of the
+crates.io releases with that one suite added (search for its name to see every changed line);
+`[patch.crates-io]` in `rust/Cargo.toml` uses them. No cryptography was written for it. Drop the
+copies once the suite has an IANA code point and OpenMLS supports it.
 
 ## How it is used
 
@@ -49,7 +59,7 @@ From Rust, use the modules directly.
 cd rust
 cargo test                       # the Rust tests, against spec/vectors
 cargo build --example cli        # then, from the repository root:
-node --test test/rust-interop.test.mjs test/rust-crypto-interop.test.mjs test/rust-session2-interop.test.mjs test/rust-wire-ledger-interop.test.mjs
+node --test test/rust-*.test.mjs
 cargo build --release --target wasm32-unknown-unknown -p secure-net-wasm
 ```
 
@@ -84,6 +94,14 @@ CI runs all of these, and runs the interop test a second time against the WebAss
   downgrade refusal) removed in turn, 26 caught. The survivor is the reference site's check
   that a public activity comes from its author's own site: a site only hosts actor documents
   for its own handles, so the actor lookup before it already fails for any other site.
+- Mutation check of MLS groups: 21 guards (the credential's key, actor, device, signature and
+  quantum-resistant key; only the committer commits, refreshes, replaces or adds, and is told so
+  first; key package credentials; every member's credential on joining; Secure Net group ids;
+  commits only from the committer; added leaves and the committer's new leaf verified; proposals
+  refused; never removing or replacing the committer; no bytes after a message; welcomes only
+  from the group's committer; group posts only from members, written for that group; leaving a
+  group on being removed) removed in turn, 20 caught. The survivor is the explicit suite check
+  on key packages: OpenMLS refuses a key package from another suite itself.
 
 ## Known differences from the JavaScript
 
@@ -111,6 +129,10 @@ CI runs all of these, and runs the interop test a second time against the WebAss
 - **ISO times.** Statements carry `toISOString()` times. Rust writes them from the `now` it is
   given, and reads only that exact form (`YYYY-MM-DDTHH:MM:SS.sssZ`, fraction optional), where
   JavaScript's `Date.parse` accepts more.
+- **Group state doesn't move between the two.** Everything a group sends (key packages,
+  welcomes, commits, messages) is shared, but a saved group state is each library's own: OpenMLS's
+  key-value store in Rust, ts-mls's encoding in JavaScript. A device keeps using the
+  implementation it joined with; one-to-one session states, by contrast, can move either way.
 - **Signing randomness.** ML-DSA-65 signatures are hedged (fresh randomness), as the
   specification allows, so they differ from run to run; they are checked by verifying, not by
   comparing.

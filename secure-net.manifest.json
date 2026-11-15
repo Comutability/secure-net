@@ -93,6 +93,7 @@
     "test/ledger.test.mjs": "AoJ_zi_YatnJleVsZ5c9gOc20cO8Z6V-Gq-OAcDRr1M",
     "test/pq.test.mjs": "uWLBUr4k7bdLNOqzltad_VkPOzGSZuERUDIF-VWoKkE",
     "test/rust-crypto-interop.test.mjs": "r4YkQH9Fn-5C4v2iGjkJEd0Ahog_2Yp9zCdcs5gxRMU",
+    "test/rust-groups-interop.test.mjs": "9RIbH0jr0QrvTJ2wzlXmXIqHiXk0b8UZsmZ575zycRI",
     "test/rust-interop.test.mjs": "ZylCSvSmJjpy_ux7PmjqJgOYx8tah9IDAUlriJLItY4",
     "test/rust-session2-interop.test.mjs": "aEzw89-ZyS5gcdJmicwuwUtQIEKEtp24e2t4jISMGPc",
     "test/rust-social-interop.test.mjs": "UOhfsorL_xxWZquuSTwdfmL1CaulcXn6C5_pen96u6A",
