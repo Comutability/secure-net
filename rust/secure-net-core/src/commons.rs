@@ -23,17 +23,26 @@ const MAX_BLOCK_BYTES: usize = 512 * 1024;
 pub const CAPS: [&str; 7] = ["authority", "govern", "members", "roles", "moderate", "channels", "content"];
 const AUTHORITY_EVENTS: [&str; 4] = ["keys.set", "replicas.set", "policy.set", "host.move"];
 
+/// Ledger events and the capability each needs (registered in spec/registry.json).
+pub const EVENT_CAPS: [(&str, &str); 14] = [
+    ("commons.genesis", "authority"),
+    ("keys.set", "authority"),
+    ("replicas.set", "authority"),
+    ("policy.set", "authority"),
+    ("host.move", "authority"),
+    ("governance.result", "govern"),
+    ("member.add", "members"),
+    ("member.remove", "members"),
+    ("role.set", "roles"),
+    ("ban.set", "moderate"),
+    ("channel.set", "channels"),
+    ("channel.remove", "channels"),
+    ("content.ref", "content"),
+    ("note", "content"),
+];
+
 fn event_cap(t: &str) -> Option<&'static str> {
-    Some(match t {
-        "commons.genesis" | "keys.set" | "replicas.set" | "policy.set" | "host.move" => "authority",
-        "governance.result" => "govern",
-        "member.add" | "member.remove" => "members",
-        "role.set" => "roles",
-        "ban.set" => "moderate",
-        "channel.set" | "channel.remove" => "channels",
-        "content.ref" | "note" => "content",
-        _ => return None,
-    })
+    EVENT_CAPS.iter().find(|(e, _)| *e == t).map(|(_, c)| *c)
 }
 
 fn default_policy() -> Map<String, Value> {

@@ -174,7 +174,7 @@
   },
   "deviations": [],
   "tested": {
-    "how": "npm test; node scripts/vectors.mjs --check; node scripts/standards.mjs; node examples/two-party.mjs; node examples/social.mjs. CVP-001, 003, 004, 005, 008 and 014 have no part document yet, so for those the reference code is the definition (CVP-010, section 5). No independent implementation has interoperated with it yet."
+    "how": "npm test; node scripts/vectors.mjs --check; cargo run -p secure-net-tools -- standards; node examples/two-party.mjs; node examples/social.mjs. CVP-001, 003, 004, 005, 008 and 014 have no part document yet, so for those the reference code is the definition (CVP-010, section 5). No independent implementation has interoperated with it yet."
   },
   "contact": "https://github.com/Comutability/secure-net/issues"
 }

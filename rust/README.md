@@ -61,6 +61,8 @@ cargo test                       # the Rust tests, against spec/vectors
 cargo build --example cli        # then, from the repository root:
 node --test test/rust-*.test.mjs
 cargo build --release --target wasm32-unknown-unknown -p secure-net-wasm
+cargo run -p secure-net-tools -- standards   # the standard, the registries and the code agree
+cargo run -p secure-net-tools -- manifest    # rewrite secure-net.manifest.json (--check to verify)
 ```
 
 CI runs all of these, and runs the interop test a second time against the WebAssembly build.

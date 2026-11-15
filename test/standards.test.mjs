@@ -1,13 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { checkStandards } from "../scripts/standards.mjs";
 import { signedRecordVectors, vectors } from "../scripts/vectors.mjs";
 
-test("the code, the registries and the part documents agree (CVP-000)", async () => {
-  const { problems } = await checkStandards();
-  assert.deepEqual(problems, []);
-});
+// The code, the registries and the part documents are checked against each other by
+// `cargo run -p secure-net-tools -- standards` (CI runs it).
 
 test("the code matches the published CVP-002 vectors", async () => {
   const published = JSON.parse(fs.readFileSync(new URL("../spec/vectors/cvp-002-v1.json", import.meta.url), "utf8"));

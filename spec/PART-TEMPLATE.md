@@ -3,7 +3,7 @@
 <!--
 Copy this file to spec/CVP-NNN-short-name.md, take the next free number from spec/registry.json,
 and add the part there in the same pull request (status Draft, version 1). Keep the header table
-and every section: scripts/standards.mjs checks them. Delete these comments.
+and every section: rust/secure-net-tools checks them. Delete these comments.
 Rules for writing parts: CVP-000, section 12. Plain British English, one requirement per sentence,
 every byte and label in full, and say plainly what isn't protected.
 -->

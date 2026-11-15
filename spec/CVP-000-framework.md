@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | none (applies to every part) |
 | Depends on | nothing |
-| Code | `scripts/standards.mjs` (checks the code against this standard) |
+| Code | `rust/secure-net-tools` (checks the code against this standard) |
 | Proposed in | [SNIP-0004](../snips/SNIP-0004.md) |
 
 The rules every part of the Commonveil Protocol (CVP) follows: how parts are written, numbered
@@ -198,7 +198,7 @@ Rules:
 - Labels starting `commonveil` belong to the older Commonveil-derived code (`src/crypto`) and are
   registered so they are never reused; new labels MUST start `secure-net/`.
 
-`scripts/standards.mjs` checks the reference code against the registries on every build: a record
+`rust/secure-net-tools` checks the reference code against the registries on every build: a record
 kind, feature, ledger event, permission, suite, endpoint or label in the code that isn't
 registered (or the other way round, where the code is the only definition) fails the build.
 

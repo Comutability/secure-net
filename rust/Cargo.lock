@@ -2354,6 +2354,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "secure-net-tools"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "secure-net-core",
+ "serde_json",
+ "sha2 0.11.1",
+]
+
+[[package]]
 name = "secure-net-wasm"
 version = "0.1.0"
 dependencies = [

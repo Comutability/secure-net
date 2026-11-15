@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["secure-net-core", "secure-net-wasm"]
+members = ["secure-net-core", "secure-net-wasm", "secure-net-tools"]
 exclude = ["vendor"]
 
 [workspace.package]

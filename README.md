@@ -77,7 +77,7 @@ new object type and a move between sites, is [`examples/social.mjs`](examples/so
 npm install
 npm test                          # node --test
 npm run vectors                   # after changing session/primitives: rewrites spec/vectors
-node scripts/manifest.mjs         # after any change: updates secure-net.manifest.json
+cargo run -p secure-net-tools -- manifest         # after any change: updates secure-net.manifest.json
 ```
 
 Commonveil keeps a copy in `packages/secure-net` and checks it against `secure-net.manifest.json`

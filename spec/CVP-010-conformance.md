@@ -6,7 +6,7 @@
 | Version | 1 |
 | Feature | none |
 | Depends on | CVP-000 |
-| Code | `test/`, `scripts/vectors.mjs`, `scripts/standards.mjs` |
+| Code | `test/`, `scripts/vectors.mjs`, `rust/secure-net-tools` |
 | Proposed in | [SNIP-0004](../snips/SNIP-0004.md) |
 
 ## Summary
@@ -105,7 +105,7 @@ Comutability does not certify implementations.
 
 The reference implementation (Secure Net) implements every profile above. Its tests (`npm test`)
 cover each part, and CI checks that its vectors and registries match its code
-(`node scripts/vectors.mjs --check`, `node scripts/standards.mjs`). Its statement is
+(`node scripts/vectors.mjs --check`, `cargo run -p secure-net-tools -- standards`). Its statement is
 `secure-net-conformance.json` in the repository root.
 
 Where a part has no document yet (the registry lists them), the reference code and its tests are

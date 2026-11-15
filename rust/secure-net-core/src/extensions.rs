@@ -12,14 +12,16 @@ use crate::error::{Error, Result};
 pub const MANIFEST: &str = "extension.manifest";
 pub const THEME: &str = "theme.package";
 
+/// Execution models and the permissions each may ask for (registered in spec/registry.json).
+pub const EXECUTION: [(&str, &[&str]); 4] = [
+    ("client-local", &["read.selected", "read.channel", "write.message", "ui.panel", "ui.command", "storage.local"]),
+    ("server-side", &["read.metadata", "read.ciphertext", "write.ciphertext", "queue", "ratelimit"]),
+    ("external", &["send.selected", "ui.panel"]),
+    ("public", &["read.public", "publish.public"]),
+];
+
 pub fn execution(model: &str) -> Option<&'static [&'static str]> {
-    Some(match model {
-        "client-local" => &["read.selected", "read.channel", "write.message", "ui.panel", "ui.command", "storage.local"],
-        "server-side" => &["read.metadata", "read.ciphertext", "write.ciphertext", "queue", "ratelimit"],
-        "external" => &["send.selected", "ui.panel"],
-        "public" => &["read.public", "publish.public"],
-        _ => return None,
-    })
+    EXECUTION.iter().find(|(m, _)| *m == model).map(|(_, p)| *p)
 }
 
 /// `^[a-z0-9]+(\.[a-z0-9-]+){2,}$`
