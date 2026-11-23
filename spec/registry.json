@@ -46,7 +46,8 @@
       "code": [
         "rust/secure-net-core/src/cv/identity.rs",
         "rust/secure-net-core/src/cv/recovery.rs",
-        "rust/secure-net-core/src/portable.rs"
+        "rust/secure-net-core/src/portable.rs",
+        "rust/secure-net-core/src/transfer.rs"
       ],
       "vectors": []
     },
@@ -646,6 +647,12 @@
       "name": "theme.package",
       "part": "CVP-008",
       "status": "active"
+    },
+    {
+      "name": "transfer.intent",
+      "part": "CVP-001",
+      "status": "active",
+      "note": "Provisional SNIP-0007 authorisation record; no production transfer service or feature advertisement"
     },
     {
       "name": "vote.ballot",

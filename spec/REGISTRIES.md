@@ -56,6 +56,7 @@ Signed with the label `secure-net/<kind>/v1` (CVP-002).
 | `session.prekey` | [CVP-016](CVP-016-sessions.md) |  |
 | `social.activity` | [CVP-018](CVP-018-activities.md) |  |
 | `theme.package` | CVP-008 |  |
+| `transfer.intent` | CVP-001 | Provisional SNIP-0007 authorisation record; no production transfer service or feature advertisement |
 | `vote.ballot` | [CVP-012](CVP-012-governance.md) |  |
 | `vote.result` | [CVP-012](CVP-012-governance.md) |  |
 | `vote.secret-ballot` | [CVP-012](CVP-012-governance.md) |  |
