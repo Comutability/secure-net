@@ -86,28 +86,31 @@ fn validate_body(b: &Value, now: i64) -> Result<()> {
 
 /// Clients sign the intent using their own independent hybrid actor key. No Commonveil
 /// account is needed. No plaintext messages, recipient names or contact graphs appear here.
-pub fn create_intent(
-    owner: &SigningKey,
-    source: &str,
-    destination: &str,
-    seq: u64,
-    challenge: &str,
-    root: &str,
-    chunks: u64,
-    total_bytes: u64,
-    issued_ms: i64,
-    expires_ms: i64,
-) -> Result<Value> {
+#[derive(Clone, Copy, Debug)]
+pub struct IntentInput<'a> {
+    pub source: &'a str,
+    pub destination: &'a str,
+    pub seq: u64,
+    pub challenge: &'a str,
+    pub root: &'a str,
+    pub chunks: u64,
+    pub total_bytes: u64,
+    pub issued_ms: i64,
+    pub expires_ms: i64,
+}
+
+pub fn create_intent(owner: &SigningKey, input: &IntentInput<'_>) -> Result<Value> {
     if !owner.public_key.contains('.') {
         return fail("NOT_PQ", "Hybrid actor key required");
     }
     let body = json!({
         "v": FORMAT_VERSION, "actor": key_id(&owner.public_key)?,
-        "from": source, "to": destination, "seq": seq,
-        "challenge": challenge, "ciphertext_root": root, "chunks": chunks, "bytes": total_bytes,
-        "issued_ms": issued_ms, "expires_ms": expires_ms
+        "from": input.source, "to": input.destination, "seq": input.seq,
+        "challenge": input.challenge, "ciphertext_root": input.root,
+        "chunks": input.chunks, "bytes": input.total_bytes,
+        "issued_ms": input.issued_ms, "expires_ms": input.expires_ms
     });
-    validate_body(&body, issued_ms)?;
+    validate_body(&body, input.issued_ms)?;
     sign(INTENT_KIND, &body, owner)
 }
 

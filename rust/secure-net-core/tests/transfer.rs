@@ -1,7 +1,8 @@
 use secure_net_core::bytes::{b64u, sha256_b64u};
 use secure_net_core::signed::{key_id, SigningKey};
 use secure_net_core::transfer::{
-    ciphertext_root, create_intent, require_features, verify_intent, Chunk, TransferTracker,
+    ciphertext_root, create_intent, require_features, verify_intent, Chunk, IntentInput,
+    TransferTracker,
 };
 use serde_json::json;
 
@@ -29,15 +30,17 @@ fn intent(owner: &SigningKey, seq: u64) -> serde_json::Value {
     let (_, parts) = parts();
     create_intent(
         owner,
-        SOURCE,
-        DEST,
-        seq,
-        &challenge(),
-        &ciphertext_root(&parts).unwrap(),
-        2,
-        parts.iter().map(|p| p.bytes).sum(),
-        NOW,
-        NOW + 600_000,
+        &IntentInput {
+            source: SOURCE,
+            destination: DEST,
+            seq,
+            challenge: &challenge(),
+            root: &ciphertext_root(&parts).unwrap(),
+            chunks: 2,
+            total_bytes: parts.iter().map(|p| p.bytes).sum(),
+            issued_ms: NOW,
+            expires_ms: NOW + 600_000,
+        },
     )
     .unwrap()
 }
@@ -170,15 +173,17 @@ fn downgrade_and_unsafe_capabilities_are_rejected() {
     assert_eq!(
         create_intent(
             &classical,
-            SOURCE,
-            DEST,
-            1,
-            &challenge(),
-            &ciphertext_root(&parts).unwrap(),
-            2,
-            20,
-            NOW,
-            NOW + 600_000
+            &IntentInput {
+                source: SOURCE,
+                destination: DEST,
+                seq: 1,
+                challenge: &challenge(),
+                root: &ciphertext_root(&parts).unwrap(),
+                chunks: 2,
+                total_bytes: 20,
+                issued_ms: NOW,
+                expires_ms: NOW + 600_000
+            }
         )
         .unwrap_err()
         .code,
@@ -247,15 +252,17 @@ fn moving_twice_keeps_the_actor_key_and_advances_sequences() {
     .unwrap();
     let second = create_intent(
         &owner,
-        DEST,
-        "third.example",
-        2,
-        &challenge(),
-        first["body"]["ciphertext_root"].as_str().unwrap(),
-        2,
-        first["body"]["bytes"].as_u64().unwrap(),
-        NOW + 1000,
-        NOW + 100_000,
+        &IntentInput {
+            source: DEST,
+            destination: "third.example",
+            seq: 2,
+            challenge: &challenge(),
+            root: first["body"]["ciphertext_root"].as_str().unwrap(),
+            chunks: 2,
+            total_bytes: first["body"]["bytes"].as_u64().unwrap(),
+            issued_ms: NOW + 1000,
+            expires_ms: NOW + 100_000,
+        },
     )
     .unwrap();
     verify_intent(
