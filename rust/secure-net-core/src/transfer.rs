@@ -211,6 +211,15 @@ pub fn ciphertext_root(parts: &[Chunk]) -> Result<String> {
     )?))
 }
 
+/// A bounded, resumable view of missing ciphertext chunks.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct MissingPage {
+    pub indices: Vec<u64>,
+    pub next_cursor: Option<u64>,
+    pub received: usize,
+    pub expected: u64,
+}
+
 /// Metadata-only state. A host MUST durably write ciphertext and then transact its digest
 /// metadata separately, before it acknowledges any chunk. No decryption keys are stored.
 #[derive(Clone, Debug)]
@@ -221,6 +230,9 @@ pub struct TransferTracker {
     parts: BTreeMap<u64, Chunk>,
     bytes: u64,
     verified: bool,
+    // Production receivers must use the public signed-root chunk manifest to validate
+    // each ciphertext part before acknowledging durable storage.
+    expected_manifest: Option<Vec<Chunk>>,
 }
 impl TransferTracker {
     pub fn new(body: &Value) -> Result<Self> {
@@ -232,8 +244,69 @@ impl TransferTracker {
             parts: BTreeMap::new(),
             bytes: 0,
             verified: false,
+            expected_manifest: None,
         })
     }
+
+    /// Validate the complete, ordered ciphertext manifest against the signed intent root.
+    pub fn with_manifest(body: &Value, manifest: &[Chunk]) -> Result<Self> {
+        let mut tracker = Self::new(body)?;
+        let root = ciphertext_root(manifest)?;
+        let total: u64 = manifest.iter().map(|part| part.bytes).sum();
+        if root != tracker.root
+            || manifest.len() as u64 != tracker.expected_count
+            || total != tracker.expected_bytes
+        {
+            return fail(
+                "BAD_MANIFEST",
+                "Ciphertext manifest differs from the signed commitment",
+            );
+        }
+        tracker.expected_manifest = Some(manifest.to_vec());
+        Ok(tracker)
+    }
+
+    /// Rebuild state after a crash from the ciphertext blobs already durably stored.
+    /// The caller must verify intent signatures, expiry and actor sequence separately.
+    pub fn resume(
+        body: &Value,
+        manifest: &[Chunk],
+        stored_blobs: &BTreeMap<u64, Vec<u8>>,
+    ) -> Result<Self> {
+        let mut tracker = Self::with_manifest(body, manifest)?;
+        for (&index, ciphertext) in stored_blobs {
+            tracker.accept(index, ciphertext)?;
+        }
+        Ok(tracker)
+    }
+
+    /// Return at most 256 missing indices at or beyond the requested cursor.
+    /// The next cursor denotes the next index to scan, not a plaintext import receipt.
+    pub fn missing_page(&self, cursor: u64, limit: usize) -> Result<MissingPage> {
+        if limit == 0 || limit > 256 || cursor > self.expected_count {
+            return fail("BAD_CURSOR", "Invalid missing-chunk page request");
+        }
+        let mut indices = Vec::new();
+        let mut next_cursor = None;
+        for index in cursor..self.expected_count {
+            if !self.parts.contains_key(&index) {
+                indices.push(index);
+                if indices.len() == limit {
+                    if index + 1 < self.expected_count {
+                        next_cursor = Some(index + 1);
+                    }
+                    break;
+                }
+            }
+        }
+        Ok(MissingPage {
+            indices,
+            next_cursor,
+            received: self.parts.len(),
+            expected: self.expected_count,
+        })
+    }
+
     /// True for a first receipt, false for a byte-identical retry.
     pub fn accept(&mut self, index: u64, ciphertext: &[u8]) -> Result<bool> {
         if self.verified {
@@ -250,6 +323,14 @@ impl TransferTracker {
             digest: sha256_b64u(ciphertext),
             bytes: ciphertext.len() as u64,
         };
+        if let Some(manifest) = &self.expected_manifest {
+            if manifest.get(index as usize) != Some(&part) {
+                return fail(
+                    "BAD_CHUNK",
+                    "Ciphertext does not match the signed chunk manifest",
+                );
+            }
+        }
         if let Some(old) = self.parts.get(&index) {
             if old == &part {
                 return Ok(false);

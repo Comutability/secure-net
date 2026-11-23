@@ -290,3 +290,120 @@ fn moving_twice_keeps_the_actor_key_and_advances_sequences() {
         "REPLAYED"
     );
 }
+
+#[test]
+fn signed_manifest_rejects_corruption_before_chunk_receipt() {
+    let owner = SigningKey::generate(true);
+    let record = intent(&owner, 4);
+    let (chunks, manifest) = parts();
+    let mut tracker = TransferTracker::with_manifest(&record["body"], &manifest).unwrap();
+    assert_eq!(
+        tracker.accept(1, b"not sealed two").unwrap_err().code,
+        "BAD_CHUNK"
+    );
+    assert_eq!(
+        tracker.received_count(),
+        0,
+        "never acknowledge corrupted ciphertext"
+    );
+    assert!(tracker.accept(1, &chunks[1]).unwrap());
+    assert!(!tracker.accept(1, &chunks[1]).unwrap(), "idempotent retry");
+    let mut tampered = manifest.clone();
+    tampered[0].bytes += 1;
+    assert_eq!(
+        TransferTracker::with_manifest(&record["body"], &tampered)
+            .unwrap_err()
+            .code,
+        "BAD_MANIFEST"
+    );
+    let missing = tracker.missing_page(0, 10).unwrap();
+    assert_eq!(missing.indices, vec![0]);
+    assert_eq!(missing.next_cursor, None);
+}
+
+#[test]
+fn incomplete_migration_restores_from_durable_ciphertext_and_resumes() {
+    use std::collections::BTreeMap;
+    let owner = SigningKey::generate(true);
+    let record = intent(&owner, 6);
+    let (chunks, manifest) = parts();
+    let mut saved = BTreeMap::new();
+    saved.insert(1, chunks[1].clone());
+    let mut restarted = TransferTracker::resume(&record["body"], &manifest, &saved).unwrap();
+    let page = restarted.missing_page(0, 1).unwrap();
+    assert_eq!(page.indices, vec![0]);
+    assert_eq!(page.received, 1);
+    assert_eq!(page.expected, 2);
+    assert_eq!(page.next_cursor, Some(1));
+    assert_eq!(
+        restarted.missing_page(1, 1).unwrap().indices,
+        Vec::<u64>::new()
+    );
+    assert_eq!(restarted.missing_page(3, 1).unwrap_err().code, "BAD_CURSOR");
+    assert_eq!(restarted.missing_page(0, 0).unwrap_err().code, "BAD_CURSOR");
+    restarted.accept(0, &chunks[0]).unwrap();
+    assert!(restarted.missing_page(0, 10).unwrap().indices.is_empty());
+    restarted.verify_ciphertext().unwrap();
+    assert!(restarted.is_verified());
+
+    let mut corrupt_disk = saved;
+    corrupt_disk.insert(0, b"corrupted on disk".to_vec());
+    assert_eq!(
+        TransferTracker::resume(&record["body"], &manifest, &corrupt_disk)
+            .unwrap_err()
+            .code,
+        "BAD_CHUNK"
+    );
+}
+
+#[test]
+fn missing_page_is_bounded_and_deterministic_for_out_of_order_receipts() {
+    let owner = SigningKey::generate(true);
+    let chunks = [
+        b"one".to_vec(),
+        b"two".to_vec(),
+        b"three".to_vec(),
+        b"four".to_vec(),
+    ];
+    let manifest: Vec<Chunk> = chunks
+        .iter()
+        .enumerate()
+        .map(|(index, blob)| Chunk {
+            index: index as u64,
+            digest: sha256_b64u(blob),
+            bytes: blob.len() as u64,
+        })
+        .collect();
+    let root = ciphertext_root(&manifest).unwrap();
+    let record = create_intent(
+        &owner,
+        &IntentInput {
+            source: SOURCE,
+            destination: DEST,
+            seq: 3,
+            challenge: &challenge(),
+            root: &root,
+            chunks: 4,
+            total_bytes: manifest.iter().map(|x| x.bytes).sum(),
+            issued_ms: NOW,
+            expires_ms: NOW + 600_000,
+        },
+    )
+    .unwrap();
+    let mut tracker = TransferTracker::with_manifest(&record["body"], &manifest).unwrap();
+    tracker.accept(3, &chunks[3]).unwrap();
+    tracker.accept(1, &chunks[1]).unwrap();
+    let first = tracker.missing_page(0, 1).unwrap();
+    assert_eq!(first.indices, vec![0]);
+    assert_eq!(first.next_cursor, Some(1));
+    let second = tracker.missing_page(first.next_cursor.unwrap(), 1).unwrap();
+    assert_eq!(second.indices, vec![2]);
+    assert_eq!(second.next_cursor, Some(3));
+    assert_eq!(
+        tracker.missing_page(3, 1).unwrap().indices,
+        Vec::<u64>::new()
+    );
+    tracker.accept(0, &chunks[0]).unwrap();
+    tracker.accept(2, &chunks[2]).unwrap();
+    tracker.verify_ciphertext().unwrap();
+}
