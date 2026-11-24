@@ -35,6 +35,21 @@ implementation shows it conforms; and `cargo run -p secure-net-tools -- standard
 the code, registries and documents agree. [`spec/INTEROPERABILITY.md`](spec/INTEROPERABILITY.md)
 explains how sites run by different people stay private, end-to-end encrypted and able to talk.
 
+## Independent application and relay integration
+
+Secure Net's specifications are not Commonveil application APIs.
+The independent [developer guide](docs/ADOPTING_SECURE_NET.md) explains
+client-held actor keys, the encrypted CVP-019 outbox and mailbox,
+authenticated site-to-site delivery and CVP-015 post-quantum sealed
+relay. A new example test runs AuroraChat and LanternNotes through
+simulated independent sites without Commonveil accounts. That shared
+library test is **not** a verified real third-party HTTP implementation.
+
+[Draft SNIP-0008](snips/SNIP-0008.md) seeks independent community review
+of brand-neutral site discovery and safer versioned request signing.
+Until accepted, historical Commonveil-derived signed wire identifiers
+must remain unchanged. Any app may implement the independent protocol.
+
 ## Using it
 
 From Rust, depend on `secure-net-core` (from this repository) and use the modules directly. The
