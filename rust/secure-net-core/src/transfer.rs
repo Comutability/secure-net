@@ -921,6 +921,81 @@ pub struct RecipientPossessionState {
     used: bool,
 }
 
+/// Opaque, private, trusted-storage challenge snapshot. Callers MUST treat
+/// this as server-only data, restrict access and enforce a monotonic used
+/// bit across restarts and nodes. Never put it in a public CVP envelope.
+impl RecipientPossessionState {
+    pub fn private_snapshot(&self) -> Value {
+        json!({
+            "v": 1, "challenge_id": self.challenge_id,
+            "request_id": self.request_id, "grant_id": self.grant_id,
+            "recipient_id": self.recipient_id,
+            "proof_digest": crate::bytes::b64u(&self.proof_digest),
+            "expires_ms": self.expires_ms, "used": self.used,
+        })
+    }
+
+    pub fn restore_private_snapshot(snapshot: &Value) -> Result<Self> {
+        const KEYS: [&str; 8] = [
+            "v",
+            "challenge_id",
+            "request_id",
+            "grant_id",
+            "recipient_id",
+            "proof_digest",
+            "expires_ms",
+            "used",
+        ];
+        exact_fields(snapshot, &KEYS)?;
+        let challenge_id = snapshot["challenge_id"].as_str().unwrap_or("");
+        let request_id = snapshot["request_id"].as_str().unwrap_or("");
+        let grant_id = snapshot["grant_id"].as_str().unwrap_or("");
+        let recipient_id = snapshot["recipient_id"].as_str().unwrap_or("");
+        let digest = snapshot["proof_digest"].as_str().unwrap_or("");
+        let expires_ms = snapshot["expires_ms"].as_i64().unwrap_or(0);
+        let Some(used) = snapshot["used"].as_bool() else {
+            return fail("BAD_STATE", "Malformed private challenge state");
+        };
+        if snapshot["v"] != 1
+            || !challenge_ok(challenge_id)
+            || !hash_ok(request_id)
+            || !hash_ok(grant_id)
+            || recipient_id.len() != 22
+            || !crate::bytes::is_b64u(recipient_id)
+            || !hash_ok(digest)
+            || expires_ms <= 0
+        {
+            return fail("BAD_STATE", "Malformed private challenge state");
+        }
+        let digest = from_b64u(digest)?;
+        let proof_digest: [u8; 32] = digest
+            .try_into()
+            .map_err(|_| Error::new("BAD_STATE", "Invalid private proof digest"))?;
+        Ok(Self {
+            challenge_id: challenge_id.to_owned(),
+            request_id: request_id.to_owned(),
+            grant_id: grant_id.to_owned(),
+            recipient_id: recipient_id.to_owned(),
+            proof_digest,
+            expires_ms,
+            used,
+        })
+    }
+}
+
+/// A destination uses all of these fields in a private, transactional
+/// compare-and-set operation: update used from 0 to 1 once and only once,
+/// after verifying that this exact challenge and recipient are still valid.
+/// The callback MUST commit durably before returning true.
+pub struct RecipientConsumeKey<'a> {
+    pub challenge_id: &'a str,
+    pub request_id: &'a str,
+    pub grant_id: &'a str,
+    pub recipient_id: &'a str,
+    pub proof_digest: &'a [u8; 32],
+    pub expires_ms: i64,
+}
+
 /// A KEM-sealed challenge sent to the recipient, with a destination-only
 /// verifier. A valid response proves this challenge was opened with the
 /// advertised KEM key, but cannot rule out human/device relaying attacks.
@@ -1089,8 +1164,8 @@ pub fn create_recipient_possession_proof(
 /// The caller MUST durably and atomically persist the consumed state before
 /// acknowledging it. Persisted anti-replay, channel authentication and human
 /// device approval are outside this application-independent primitive.
-pub fn verify_recipient_possession_proof(
-    state: &mut RecipientPossessionState,
+fn check_recipient_possession_proof(
+    state: &RecipientPossessionState,
     signed_proof: &Value,
     signed_request: &Value,
     signed_grant: &Value,
@@ -1146,10 +1221,76 @@ pub fn verify_recipient_possession_proof(
     if !crate::bytes::equal_bytes(&response, &state.proof_digest) {
         return fail("BAD_PROOF", "Wrong recipient KEM possession proof");
     }
-    state.used = true;
     Ok(json!({
         "recipient_possession_verified": true,
         "recipient_id": state.recipient_id,
         "imported": false, "cutover": false
     }))
+}
+
+/// In-memory verifier for isolated reference tests only. A production
+/// destination MUST use verify_recipient_possession_with_atomic_consume
+/// below and a real durable database transaction instead.
+pub fn verify_recipient_possession_proof(
+    state: &mut RecipientPossessionState,
+    signed_proof: &Value,
+    signed_request: &Value,
+    signed_grant: &Value,
+    owner_public: &str,
+    expected: &ExpectedRecipient<'_>,
+) -> Result<Value> {
+    let verified = check_recipient_possession_proof(
+        state,
+        signed_proof,
+        signed_request,
+        signed_grant,
+        owner_public,
+        expected,
+    )?;
+    state.used = true;
+    Ok(verified)
+}
+
+/// Verify first, then invoke the destination's private *atomic* consume
+/// transaction before acknowledging the recipient. A false consume result
+/// means another process/restart has already committed the same challenge.
+/// If the database cannot commit, the caller MUST return Err and not
+/// acknowledge. The callback must compare every field in RecipientConsumeKey
+/// and commit used=1 in stable storage in one transaction.
+pub fn verify_recipient_possession_with_atomic_consume<F>(
+    state: &mut RecipientPossessionState,
+    signed_proof: &Value,
+    signed_request: &Value,
+    signed_grant: &Value,
+    owner_public: &str,
+    expected: &ExpectedRecipient<'_>,
+    consume: F,
+) -> Result<Value>
+where
+    F: FnOnce(&RecipientConsumeKey<'_>) -> Result<bool>,
+{
+    let verified = check_recipient_possession_proof(
+        state,
+        signed_proof,
+        signed_request,
+        signed_grant,
+        owner_public,
+        expected,
+    )?;
+    let key = RecipientConsumeKey {
+        challenge_id: &state.challenge_id,
+        request_id: &state.request_id,
+        grant_id: &state.grant_id,
+        recipient_id: &state.recipient_id,
+        proof_digest: &state.proof_digest,
+        expires_ms: state.expires_ms,
+    };
+    if !consume(&key)? {
+        return fail(
+            "REPLAYED",
+            "Possession challenge was already consumed in persistent storage",
+        );
+    }
+    state.used = true;
+    Ok(verified)
 }

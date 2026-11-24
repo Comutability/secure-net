@@ -1321,3 +1321,181 @@ fn recipient_possession_refuses_forged_proof_wrong_site_and_expiry() {
         true
     );
 }
+
+#[test]
+fn recipient_possession_private_snapshot_survives_restart_but_refuses_corruption() {
+    use secure_net_core::transfer::{
+        create_recipient_possession_offer, ExpectedRecipient, RecipientPossessionState,
+    };
+    let (actor, _, request, grant, _, _, root, nonce) = possession_fixture();
+    let expected = ExpectedRecipient {
+        actor_id: &actor.kid,
+        stage_id: "recstage000000000000000001",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW,
+    };
+    let offer =
+        create_recipient_possession_offer(&request, &grant, &actor.public_key, &expected).unwrap();
+    let snapshot = offer.verifier.private_snapshot();
+    assert_eq!(snapshot["v"], 1);
+    assert_eq!(snapshot["used"], false);
+    assert_eq!(snapshot["challenge_id"], offer.public["challenge_id"]);
+    assert_eq!(snapshot["request_id"], offer.public["request_id"]);
+    assert_eq!(snapshot["grant_id"], offer.public["grant_id"]);
+    assert!(snapshot.get("kem_priv").is_none());
+    assert!(snapshot.get("challenge_plaintext").is_none());
+    let persisted = serde_json::to_vec(&snapshot).unwrap();
+    let reopened: serde_json::Value = serde_json::from_slice(&persisted).unwrap();
+    let restored = RecipientPossessionState::restore_private_snapshot(&reopened).unwrap();
+    assert_eq!(restored.private_snapshot(), snapshot);
+    for (key, value) in [
+        ("challenge_id", json!("short")),
+        ("request_id", json!("not-a-hash")),
+        ("proof_digest", json!("bad")),
+        ("expires_ms", json!(-1)),
+        ("used", json!("false")),
+        ("v", json!(2)),
+    ] {
+        let mut corrupt = snapshot.clone();
+        corrupt[key] = value;
+        assert!(
+            RecipientPossessionState::restore_private_snapshot(&corrupt).is_err(),
+            "{key}"
+        );
+    }
+    let mut excess = snapshot.clone();
+    excess["private_contact"] = json!("not permitted");
+    assert_eq!(
+        RecipientPossessionState::restore_private_snapshot(&excess)
+            .err()
+            .unwrap()
+            .code,
+        "BAD_CONSENT"
+    );
+}
+
+#[test]
+fn recipient_possession_uses_durable_atomic_commit_before_ack_and_rejects_replayed_snapshots() {
+    use secure_net_core::transfer::{
+        create_recipient_possession_offer, create_recipient_possession_proof,
+        verify_recipient_possession_with_atomic_consume, ExpectedRecipient,
+        RecipientPossessionState,
+    };
+    use std::io::Write;
+    let (actor, device, request, grant, _, private, root, nonce) = possession_fixture();
+    let expected = ExpectedRecipient {
+        actor_id: &actor.kid,
+        stage_id: "recstage000000000000000001",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW,
+    };
+    let offer =
+        create_recipient_possession_offer(&request, &grant, &actor.public_key, &expected).unwrap();
+    let pending_snapshot = offer.verifier.private_snapshot();
+    let proof = create_recipient_possession_proof(
+        &device,
+        &private,
+        &offer.public,
+        &request,
+        &grant,
+        &actor.public_key,
+        &expected,
+    )
+    .unwrap();
+    // An unavailable private durable store MUST refuse the success receipt,
+    // while retaining the ability to retry once the database is healthy.
+    let mut verifier =
+        RecipientPossessionState::restore_private_snapshot(&pending_snapshot).unwrap();
+    let err = verify_recipient_possession_with_atomic_consume(
+        &mut verifier,
+        &proof,
+        &request,
+        &grant,
+        &actor.public_key,
+        &expected,
+        |_| {
+            Err(secure_net_core::error::Error::new(
+                "STORAGE",
+                "durable commit unavailable",
+            ))
+        },
+    )
+    .unwrap_err();
+    assert_eq!(err.code, "STORAGE");
+    assert_eq!(verifier.private_snapshot()["used"], false);
+
+    // Use create_new as a simple test-only compare-and-set ledger. Real
+    // destinations need a database transaction, size quotas and shared
+    // anti-rollback state across processes, not an independent file per node.
+    let dir = std::env::temp_dir().join(format!(
+        "sn-test-private-possession-{}",
+        secure_net_core::bytes::random_b64u(20)
+    ));
+    std::fs::create_dir(&dir).unwrap();
+    let consumed = dir.join("used");
+    let persist = |key: &secure_net_core::transfer::RecipientConsumeKey<'_>| {
+        assert_eq!(key.challenge_id, offer.public["challenge_id"]);
+        assert_eq!(key.recipient_id, device.kid);
+        assert_eq!(key.request_id, offer.public["request_id"]);
+        assert_eq!(key.grant_id, offer.public["grant_id"]);
+        assert_eq!(key.proof_digest.len(), 32);
+        match std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&consumed)
+        {
+            Ok(mut f) => {
+                f.write_all(b"consumed")
+                    .map_err(|_| secure_net_core::error::Error::new("STORAGE", "write failed"))?;
+                f.sync_all()
+                    .map_err(|_| secure_net_core::error::Error::new("STORAGE", "sync failed"))?;
+                Ok(true)
+            }
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(false),
+            Err(_) => Err(secure_net_core::error::Error::new(
+                "STORAGE",
+                "commit failed",
+            )),
+        }
+    };
+    let accepted = verify_recipient_possession_with_atomic_consume(
+        &mut verifier,
+        &proof,
+        &request,
+        &grant,
+        &actor.public_key,
+        &expected,
+        persist,
+    )
+    .unwrap();
+    assert_eq!(accepted["recipient_possession_verified"], true);
+    assert_eq!(accepted["cutover"], false);
+    assert_eq!(verifier.private_snapshot()["used"], true);
+
+    // Simulate recovery from an old, unconsumed in-memory copy. The durable
+    // commit marker still exists, so even this stale copy cannot re-ack.
+    let mut stale = RecipientPossessionState::restore_private_snapshot(&pending_snapshot).unwrap();
+    assert_eq!(
+        verify_recipient_possession_with_atomic_consume(
+            &mut stale,
+            &proof,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected,
+            persist
+        )
+        .unwrap_err()
+        .code,
+        "REPLAYED"
+    );
+    assert_eq!(stale.private_snapshot()["used"], false);
+    let restored_committed =
+        RecipientPossessionState::restore_private_snapshot(&verifier.private_snapshot()).unwrap();
+    assert_eq!(restored_committed.private_snapshot()["used"], true);
+    std::fs::remove_dir_all(dir).unwrap();
+}
