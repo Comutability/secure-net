@@ -621,3 +621,283 @@ pub fn verify_reconciliation(
     }
     Ok(body.clone())
 }
+
+/// Provisional SNIP-0007 receiver/device consent profile. These signed
+/// records do NOT transfer secrets, authorise an actor move or prove a KEM
+/// decapsulation key is available. A recipient device signs its request,
+/// then the independently owned actor signs a grant over that exact request.
+pub const RECIPIENT_REQUEST_KIND: &str = "transfer.recipient-request";
+pub const RECIPIENT_GRANT_KIND: &str = "transfer.recipient-grant";
+const MAX_RECIPIENT_CONSENT_MS: i64 = 5 * 60 * 1000;
+
+/// The transfer details a recipient must independently check, supplied by
+/// the verified actor and stage, never inferred from the requesting device.
+#[derive(Clone, Copy, Debug)]
+pub struct ExpectedRecipient<'a> {
+    pub actor_id: &'a str,
+    pub stage_id: &'a str,
+    pub destination: &'a str,
+    pub ciphertext_root: &'a str,
+    pub challenge: &'a str,
+    pub now_ms: i64,
+}
+
+/// Input for a device-generated request. The only KEM value in this
+/// record is the recipient's public MLKEM768-P256 key. It carries no
+/// encryption seed, ephemeral shared secret or private decryption key.
+#[derive(Clone, Copy, Debug)]
+pub struct RecipientRequestInput<'a> {
+    pub expected: ExpectedRecipient<'a>,
+    pub recipient_kem_public: &'a str,
+    pub expires_ms: i64,
+}
+
+fn recipient_time(body: &Value, now_ms: i64) -> Result<()> {
+    let issued = body["issued_ms"]
+        .as_i64()
+        .ok_or_else(|| Error::new("BAD_TIME", "Missing issue time"))?;
+    let expires = body["expires_ms"]
+        .as_i64()
+        .ok_or_else(|| Error::new("BAD_TIME", "Missing expiry"))?;
+    if issued > now_ms.saturating_add(CLOCK_SKEW_MS)
+        || expires < now_ms
+        || expires <= issued
+        || expires.saturating_sub(issued) > MAX_RECIPIENT_CONSENT_MS
+    {
+        return fail(
+            "EXPIRED",
+            "Recipient approval expired or exceeds five minutes",
+        );
+    }
+    Ok(())
+}
+
+/// Refuse all unsigned outer fields, unusual signature metadata and any
+/// classical-only downgrade before accepting a hybrid-signed consent record.
+fn strict_recipient_envelope(record: &Value, public: &str, kind: &str) -> Result<Value> {
+    if !public.contains('.') {
+        return fail("NOT_PQ", "Independent hybrid signing key required");
+    }
+    let outer = record
+        .as_object()
+        .ok_or_else(|| Error::new("BAD_CONSENT", "No signed envelope"))?;
+    if outer.len() != 3
+        || ["kind", "body", "sig"]
+            .iter()
+            .any(|k| !outer.contains_key(*k))
+    {
+        return fail("BAD_CONSENT", "Unsigned metadata is forbidden");
+    }
+    let sig = record["sig"]
+        .as_object()
+        .ok_or_else(|| Error::new("BAD_CONSENT", "Missing signature"))?;
+    if sig.len() != 4
+        || ["kid", "alg", "value", "pq"]
+            .iter()
+            .any(|k| !sig.contains_key(*k))
+    {
+        return fail("BAD_CONSENT", "Unexpected signing metadata");
+    }
+    let kid = key_id(public)?;
+    let body = verify(
+        record,
+        |id| (id == kid).then(|| public.to_string()),
+        Some(&[kind]),
+    )?;
+    Ok(body.clone())
+}
+
+fn exact_fields(body: &Value, keys: &[&str]) -> Result<()> {
+    let fields = body
+        .as_object()
+        .ok_or_else(|| Error::new("BAD_CONSENT", "Missing consent object"))?;
+    if fields.len() != keys.len() || keys.iter().any(|key| !fields.contains_key(*key)) {
+        return fail("BAD_CONSENT", "Unknown or missing consent fields");
+    }
+    Ok(())
+}
+
+/// A new compatible client can create and sign its own request. The actor
+/// hasn't approved it yet; do not disclose an encrypted report to the
+/// requesting device solely because this function succeeded.
+pub fn create_recipient_request(
+    device: &SigningKey,
+    input: &RecipientRequestInput<'_>,
+) -> Result<Value> {
+    if !device.public_key.contains('.') {
+        return fail("NOT_PQ", "A hybrid device signing key is required");
+    }
+    let body = json!({
+        "v": FORMAT_VERSION,
+        "actor": input.expected.actor_id,
+        "stage_id": input.expected.stage_id,
+        "to": input.expected.destination,
+        "ciphertext_root": input.expected.ciphertext_root,
+        "challenge": input.expected.challenge,
+        "recipient_id": device.kid,
+        "recipient_sign_public": device.public_key,
+        "recipient_kem_alg": crate::cv::kem::KEM_NAME,
+        "recipient_kem_pub": input.recipient_kem_public,
+        "issued_ms": input.expected.now_ms,
+        "expires_ms": input.expires_ms,
+    });
+    validate_recipient_body(&body, &input.expected)?;
+    sign(RECIPIENT_REQUEST_KIND, &body, device)
+}
+
+fn validate_recipient_body(body: &Value, expected: &ExpectedRecipient<'_>) -> Result<()> {
+    const KEYS: [&str; 12] = [
+        "v",
+        "actor",
+        "stage_id",
+        "to",
+        "ciphertext_root",
+        "challenge",
+        "recipient_id",
+        "recipient_sign_public",
+        "recipient_kem_alg",
+        "recipient_kem_pub",
+        "issued_ms",
+        "expires_ms",
+    ];
+    exact_fields(body, &KEYS)?;
+    if body["v"] != FORMAT_VERSION
+        || body["actor"] != expected.actor_id
+        || !valid_stage_id(expected.stage_id)
+        || body["stage_id"] != expected.stage_id
+        || !canonical_host(expected.destination)
+        || body["to"] != expected.destination
+        || !hash_ok(expected.ciphertext_root)
+        || body["ciphertext_root"] != expected.ciphertext_root
+        || !challenge_ok(expected.challenge)
+        || body["challenge"] != expected.challenge
+        || body["recipient_kem_alg"] != crate::cv::kem::KEM_NAME
+        || !body["recipient_kem_pub"]
+            .as_str()
+            .is_some_and(crate::cv::kem::is_kem_public)
+    {
+        return fail(
+            "BAD_CONSENT",
+            "Device request does not match the pinned transfer",
+        );
+    }
+    let device_public = body["recipient_sign_public"]
+        .as_str()
+        .ok_or_else(|| Error::new("BAD_CONSENT", "Missing device key"))?;
+    if !device_public.contains('.')
+        || key_id(device_public).ok().as_deref() != body["recipient_id"].as_str()
+        || body["recipient_id"] == expected.actor_id
+    {
+        return fail(
+            "BAD_DEVICE",
+            "Recipient key is not an independent hybrid device key",
+        );
+    }
+    recipient_time(body, expected.now_ms)
+}
+
+/// Only validates the recipient's signing key and its signed public KEM
+/// advertisement, not possession of the KEM private key or approval by
+/// the owning actor. A separate owner signature is mandatory.
+pub fn verify_recipient_request(record: &Value, expected: &ExpectedRecipient<'_>) -> Result<Value> {
+    let public = record["body"]["recipient_sign_public"]
+        .as_str()
+        .ok_or_else(|| Error::new("BAD_DEVICE", "No recipient signing key"))?;
+    let body = strict_recipient_envelope(record, public, RECIPIENT_REQUEST_KIND)?;
+    validate_recipient_body(&body, expected)?;
+    Ok(body)
+}
+
+/// The actor separately approves an exact request signature, its recipient
+/// and KEM public key, limited to the same short stage-bound lifetime.
+pub fn create_recipient_grant(
+    owner: &SigningKey,
+    recipient_request: &Value,
+    expected: &ExpectedRecipient<'_>,
+    expires_ms: i64,
+) -> Result<Value> {
+    if key_id(&owner.public_key)? != expected.actor_id || !owner.public_key.contains('.') {
+        return fail(
+            "WRONG_ACTOR",
+            "Owner must control the expected hybrid actor",
+        );
+    }
+    let request = verify_recipient_request(recipient_request, expected)?;
+    let body = json!({
+        "v": FORMAT_VERSION,
+        "actor": expected.actor_id,
+        "stage_id": expected.stage_id,
+        "to": expected.destination,
+        "ciphertext_root": expected.ciphertext_root,
+        "recipient_id": request["recipient_id"],
+        "recipient_request_sha256": crate::signed::record_id(recipient_request)?,
+        "owner_approved": true,
+        "issued_ms": expected.now_ms,
+        "expires_ms": expires_ms,
+    });
+    validate_recipient_grant_body(&body, &request, recipient_request, expected)?;
+    sign(RECIPIENT_GRANT_KIND, &body, owner)
+}
+
+fn validate_recipient_grant_body(
+    body: &Value,
+    request: &Value,
+    signed_request: &Value,
+    expected: &ExpectedRecipient<'_>,
+) -> Result<()> {
+    const KEYS: [&str; 10] = [
+        "v",
+        "actor",
+        "stage_id",
+        "to",
+        "ciphertext_root",
+        "recipient_id",
+        "recipient_request_sha256",
+        "owner_approved",
+        "issued_ms",
+        "expires_ms",
+    ];
+    exact_fields(body, &KEYS)?;
+    if body["v"] != FORMAT_VERSION
+        || body["actor"] != expected.actor_id
+        || body["stage_id"] != expected.stage_id
+        || body["to"] != expected.destination
+        || body["ciphertext_root"] != expected.ciphertext_root
+        || body["recipient_id"] != request["recipient_id"]
+        || body["recipient_request_sha256"] != crate::signed::record_id(signed_request)?
+        || body["owner_approved"] != true
+    {
+        return fail(
+            "BAD_GRANT",
+            "Grant does not approve this exact signed recipient request",
+        );
+    }
+    recipient_time(body, expected.now_ms)?;
+    if body["issued_ms"].as_i64() < request["issued_ms"].as_i64()
+        || body["expires_ms"].as_i64() > request["expires_ms"].as_i64()
+    {
+        return fail(
+            "BAD_GRANT",
+            "Grant may not outlive the device's signed request",
+        );
+    }
+    Ok(())
+}
+
+/// Both the receiving device and actor must sign the same transfer binding.
+/// This does not wrap or hand over a history key. A destination must still
+/// persist one-use challenge consumption and obtain separate KEM proof.
+pub fn verify_recipient_grant(
+    signed_request: &Value,
+    signed_grant: &Value,
+    owner_public: &str,
+    expected: &ExpectedRecipient<'_>,
+) -> Result<Value> {
+    if key_id(owner_public)? != expected.actor_id || !owner_public.contains('.') {
+        return fail("WRONG_ACTOR", "Untrusted owner signing key");
+    }
+    let request = verify_recipient_request(signed_request, expected)?;
+    let grant = strict_recipient_envelope(signed_grant, owner_public, RECIPIENT_GRANT_KIND)?;
+    validate_recipient_grant_body(&grant, &request, signed_request, expected)?;
+    Ok(grant)
+}

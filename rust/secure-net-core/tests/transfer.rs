@@ -740,3 +740,264 @@ fn reconciliation_schema_rejects_unsigned_metadata_and_classical_downgrade() {
         "NOT_PQ"
     );
 }
+
+fn recipient_fixture(
+    owner: &SigningKey,
+    device: &SigningKey,
+) -> (serde_json::Value, serde_json::Value, String, String) {
+    use secure_net_core::transfer::{
+        create_recipient_grant, create_recipient_request, ExpectedRecipient, RecipientRequestInput,
+    };
+    let root = sha256_b64u(b"owner-approved-encrypted-archive");
+    let nonce = challenge();
+    let kem = secure_net_core::cv::kem::kem_keygen(None).unwrap();
+    let kem_pub = kem["kem_pub"].as_str().unwrap();
+    let expected = ExpectedRecipient {
+        actor_id: &owner.kid,
+        stage_id: "stage000000000000000000000",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW,
+    };
+    let request = create_recipient_request(
+        device,
+        &RecipientRequestInput {
+            expected,
+            recipient_kem_public: kem_pub,
+            expires_ms: NOW + 120_000,
+        },
+    )
+    .unwrap();
+    let grant = create_recipient_grant(owner, &request, &expected, NOW + 60_000).unwrap();
+    (request, grant, root, nonce)
+}
+
+#[test]
+fn independent_device_request_and_actor_grant_are_both_hybrid_signed_and_site_bound() {
+    use secure_net_core::transfer::{
+        verify_recipient_grant, verify_recipient_request, ExpectedRecipient,
+    };
+    let owner = SigningKey::generate(true);
+    let device = SigningKey::generate(true);
+    let (request, grant, root, nonce) = recipient_fixture(&owner, &device);
+    let expected = ExpectedRecipient {
+        actor_id: &owner.kid,
+        stage_id: "stage000000000000000000000",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW + 1000,
+    };
+    let r = verify_recipient_request(&request, &expected).unwrap();
+    assert_eq!(r["recipient_id"], device.kid);
+    assert_eq!(r["recipient_kem_alg"], "MLKEM768-P256");
+    assert!(r["recipient_kem_pub"].as_str().unwrap().len() > 1600);
+    let g = verify_recipient_grant(&request, &grant, &owner.public_key, &expected).unwrap();
+    assert_eq!(g["actor"], owner.kid);
+    assert_eq!(g["recipient_id"], device.kid);
+    assert_eq!(g["owner_approved"], true);
+    assert!(!request.to_string().contains("kem_priv"));
+    assert!(!grant.to_string().contains("kem_priv"));
+}
+
+#[test]
+fn recipient_grant_prevents_request_substitution_cross_site_and_expired_approval() {
+    use secure_net_core::transfer::{verify_recipient_grant, ExpectedRecipient};
+    let owner = SigningKey::generate(true);
+    let device = SigningKey::generate(true);
+    let (request, grant, root, nonce) = recipient_fixture(&owner, &device);
+    let expected = ExpectedRecipient {
+        actor_id: &owner.kid,
+        stage_id: "stage000000000000000000000",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW + 1000,
+    };
+    let other_device = SigningKey::generate(true);
+    let (other_request, _, _, _) = recipient_fixture(&owner, &other_device);
+    assert_eq!(
+        verify_recipient_grant(&other_request, &grant, &owner.public_key, &expected)
+            .unwrap_err()
+            .code,
+        "BAD_GRANT"
+    );
+    let wrong_host = ExpectedRecipient {
+        destination: "attacker.example",
+        ..expected
+    };
+    assert_eq!(
+        verify_recipient_grant(&request, &grant, &owner.public_key, &wrong_host)
+            .unwrap_err()
+            .code,
+        "BAD_CONSENT"
+    );
+    let wrong_stage = ExpectedRecipient {
+        stage_id: "another0000000000000000000",
+        ..expected
+    };
+    assert_eq!(
+        verify_recipient_grant(&request, &grant, &owner.public_key, &wrong_stage)
+            .unwrap_err()
+            .code,
+        "BAD_CONSENT"
+    );
+    let wrong_nonce = sha256_b64u(b"another nonce");
+    assert_eq!(
+        verify_recipient_grant(
+            &request,
+            &grant,
+            &owner.public_key,
+            &ExpectedRecipient {
+                challenge: &wrong_nonce,
+                ..expected
+            }
+        )
+        .unwrap_err()
+        .code,
+        "BAD_CONSENT"
+    );
+    let wrong_root = sha256_b64u(b"altered archive");
+    assert_eq!(
+        verify_recipient_grant(
+            &request,
+            &grant,
+            &owner.public_key,
+            &ExpectedRecipient {
+                ciphertext_root: &wrong_root,
+                ..expected
+            }
+        )
+        .unwrap_err()
+        .code,
+        "BAD_CONSENT"
+    );
+    assert_eq!(
+        verify_recipient_grant(
+            &request,
+            &grant,
+            &owner.public_key,
+            &ExpectedRecipient {
+                now_ms: NOW + 121_000,
+                ..expected
+            }
+        )
+        .unwrap_err()
+        .code,
+        "EXPIRED"
+    );
+    let impostor = SigningKey::generate(true);
+    assert_eq!(
+        verify_recipient_grant(&request, &grant, &impostor.public_key, &expected)
+            .unwrap_err()
+            .code,
+        "WRONG_ACTOR"
+    );
+}
+
+#[test]
+fn independent_recipient_grants_reject_forgery_metadata_downgrade_and_key_leaks() {
+    use secure_net_core::signed::sign;
+    use secure_net_core::transfer::{
+        create_recipient_grant, create_recipient_request, verify_recipient_grant,
+        verify_recipient_request, ExpectedRecipient, RecipientRequestInput,
+    };
+    let owner = SigningKey::generate(true);
+    let device = SigningKey::generate(true);
+    let (request, grant, root, nonce) = recipient_fixture(&owner, &device);
+    let expected = ExpectedRecipient {
+        actor_id: &owner.kid,
+        stage_id: "stage000000000000000000000",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW,
+    };
+    let mut forged = grant.clone();
+    forged["body"]["owner_approved"] = json!(false);
+    assert_eq!(
+        verify_recipient_grant(&request, &forged, &owner.public_key, &expected)
+            .unwrap_err()
+            .code,
+        "BAD_SIGNATURE"
+    );
+    let mut outer_metadata = request.clone();
+    outer_metadata["plaintext_contact"] = json!("Private Alice");
+    assert_eq!(
+        verify_recipient_request(&outer_metadata, &expected)
+            .unwrap_err()
+            .code,
+        "BAD_CONSENT"
+    );
+    let mut signed_metadata = request["body"].clone();
+    signed_metadata["private_filename"] = json!("secret.txt");
+    let signed = sign("transfer.recipient-request", &signed_metadata, &device).unwrap();
+    assert_eq!(
+        verify_recipient_request(&signed, &expected)
+            .unwrap_err()
+            .code,
+        "BAD_CONSENT"
+    );
+    let mut extra_signature = grant.clone();
+    extra_signature["sig"]["private_note"] = json!("not allowed");
+    assert_eq!(
+        verify_recipient_grant(&request, &extra_signature, &owner.public_key, &expected)
+            .unwrap_err()
+            .code,
+        "BAD_CONSENT"
+    );
+    let classic_device = SigningKey::generate(false);
+    let kem = secure_net_core::cv::kem::kem_keygen(None).unwrap();
+    assert_eq!(
+        create_recipient_request(
+            &classic_device,
+            &RecipientRequestInput {
+                expected,
+                recipient_kem_public: kem["kem_pub"].as_str().unwrap(),
+                expires_ms: NOW + 60_000,
+            }
+        )
+        .unwrap_err()
+        .code,
+        "NOT_PQ"
+    );
+    assert_eq!(
+        create_recipient_request(
+            &owner,
+            &RecipientRequestInput {
+                expected,
+                recipient_kem_public: kem["kem_pub"].as_str().unwrap(),
+                expires_ms: NOW + 60_000,
+            }
+        )
+        .unwrap_err()
+        .code,
+        "BAD_DEVICE"
+    );
+    assert_eq!(
+        create_recipient_request(
+            &device,
+            &RecipientRequestInput {
+                expected,
+                recipient_kem_public: "invalid-key",
+                expires_ms: NOW + 60_000,
+            }
+        )
+        .unwrap_err()
+        .code,
+        "BAD_CONSENT"
+    );
+    assert_eq!(
+        create_recipient_grant(&classic_device, &request, &expected, NOW + 60_000)
+            .unwrap_err()
+            .code,
+        "WRONG_ACTOR"
+    );
+    assert_eq!(
+        create_recipient_grant(&owner, &request, &expected, NOW + 130_000)
+            .unwrap_err()
+            .code,
+        "BAD_GRANT"
+    );
+}

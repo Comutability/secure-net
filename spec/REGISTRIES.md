@@ -58,6 +58,8 @@ Signed with the label `secure-net/<kind>/v1` (CVP-002).
 | `theme.package` | CVP-008 |  |
 | `transfer.intent` | CVP-001 | Provisional SNIP-0007 authorisation record; no production transfer service or feature advertisement |
 | `transfer.reconcile` | CVP-001 | Provisional SNIP-0007 hybrid-signed client assertion, not proof of decryption or permission for transfer cutover |
+| `transfer.recipient-request` | CVP-001 | Provisional SNIP-0007 hybrid-signed device request with public MLKEM768-P256 key; no private key delivery or KEM possession proof |
+| `transfer.recipient-grant` | CVP-001 | Provisional SNIP-0007 owner signature approving an exact device request; not account binding, decryption, import or cutover |
 | `vote.ballot` | [CVP-012](CVP-012-governance.md) |  |
 | `vote.result` | [CVP-012](CVP-012-governance.md) |  |
 | `vote.secret-ballot` | [CVP-012](CVP-012-governance.md) |  |
