@@ -367,3 +367,79 @@ impl TransferTracker {
         Ok(())
     }
 }
+
+/// Draft SNIP-0007 recipient-encrypted private reconciliation report envelope.
+/// The server checks framing and digest only. It cannot authenticate GCM or
+/// prove the submitted bytes are encrypted. Production consumers need a
+/// verified recipient device and non-extractable cryptographic keys.
+pub const REPORT_MAGIC: &[u8; 6] = b"CVRPT\x01";
+pub const MAX_REPORT_BYTES: usize = 64 * 1024;
+pub const MIN_REPORT_BYTES: usize = 48;
+
+/// Check the experimental CVRPT v1 framing and return the exact uploaded
+/// bytes' SHA-256 digest for the independent owner's hybrid-signed statement.
+/// The bytes following the header are opaque to the destination.
+pub fn encrypted_report_digest(bytes: &[u8]) -> Result<String> {
+    if bytes.len() < MIN_REPORT_BYTES || bytes.len() > MAX_REPORT_BYTES {
+        return fail(
+            "BAD_REPORT_SIZE",
+            "Encrypted reconciliation report is outside the bounded range",
+        );
+    }
+    if !bytes.starts_with(REPORT_MAGIC) {
+        return fail(
+            "BAD_REPORT_MAGIC",
+            "Unsupported encrypted reconciliation report version",
+        );
+    }
+    Ok(sha256_b64u(bytes))
+}
+
+/// Domain-separated associated-data inputs for an experimental AES-256-GCM
+/// recipient report. The owning client must authenticate these values before
+/// encryption, and independently authenticate/decrypt them after downloading.
+#[derive(Clone, Copy, Debug)]
+pub struct ReportContext<'a> {
+    pub actor_id: &'a str,
+    pub stage_id: &'a str,
+    pub destination: &'a str,
+    pub ciphertext_root: &'a str,
+    pub recipient_device_id: &'a str,
+}
+
+/// Exact UTF-8 associated data used by the reference browser report helper.
+/// This function does not access a private key or encrypt messages.
+pub fn report_associated_data(context: &ReportContext<'_>) -> Result<Vec<u8>> {
+    let valid_id = |s: &str, min: usize, max: usize| {
+        (min..=max).contains(&s.len())
+            && s.bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+    };
+    let destination = context.destination;
+    if !valid_id(context.actor_id, 16, 90)
+        || !valid_id(context.stage_id, 20, 90)
+        || !valid_id(context.recipient_device_id, 12, 90)
+        || !hash_ok(context.ciphertext_root)
+        || destination.len() > 253
+        || !destination.contains('.')
+        || destination == "localhost"
+        || destination.ends_with(".localhost")
+        || !canonical_host(destination)
+        || destination.bytes().all(|c| c.is_ascii_digit() || c == b'.')
+    {
+        return fail(
+            "BAD_CONTEXT",
+            "Unsafe or non-canonical encrypted report context",
+        );
+    }
+    let fields = json!([
+        context.actor_id,
+        context.stage_id,
+        context.destination,
+        context.ciphertext_root,
+        context.recipient_device_id
+    ]);
+    let mut out = b"secure-net/transfer.report/v1\n".to_vec();
+    out.extend_from_slice(fields.to_string().as_bytes());
+    Ok(out)
+}

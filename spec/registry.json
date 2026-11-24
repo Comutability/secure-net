@@ -49,7 +49,9 @@
         "rust/secure-net-core/src/portable.rs",
         "rust/secure-net-core/src/transfer.rs"
       ],
-      "vectors": []
+      "vectors": [
+        "vectors/transfer-report-v1.json"
+      ]
     },
     {
       "id": "CVP-002",
@@ -1212,6 +1214,12 @@
       "label": "secure-net/repo/v1/empty",
       "use": "root of an empty repository",
       "part": "CVP-020",
+      "status": "active"
+    },
+    {
+      "label": "secure-net/transfer.report/v1",
+      "use": "Experimental SNIP-0007 recipient-encrypted reconciliation report associated-data domain; draft only, not advertised",
+      "part": "CVP-001",
       "status": "active"
     }
   ],

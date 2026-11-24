@@ -251,6 +251,7 @@ a change means a new version (CVP-000, 4.4). `<...>` marks a variable part.
 | `secure-net/repo/v1/leaf` | Merkle leaf hash prefix (followed by a newline and the record id) | [CVP-020](CVP-020-repositories.md) |  |
 | `secure-net/repo/v1/node` | Merkle node hash prefix (followed by a newline and the two child hashes) | [CVP-020](CVP-020-repositories.md) |  |
 | `secure-net/repo/v1/empty` | root of an empty repository | [CVP-020](CVP-020-repositories.md) |  |
+| `secure-net/transfer.report/v1` | Experimental SNIP-0007 recipient-encrypted reconciliation report associated-data domain; draft only, not advertised | CVP-001 |  |
 
 ## Protocol identifiers
 

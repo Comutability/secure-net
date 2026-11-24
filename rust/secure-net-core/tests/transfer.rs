@@ -407,3 +407,116 @@ fn missing_page_is_bounded_and_deterministic_for_out_of_order_receipts() {
     tracker.accept(2, &chunks[2]).unwrap();
     tracker.verify_ciphertext().unwrap();
 }
+
+#[test]
+fn report_envelope_has_one_version_and_a_bounded_digest() {
+    use secure_net_core::transfer::{
+        encrypted_report_digest, MAX_REPORT_BYTES, MIN_REPORT_BYTES, REPORT_MAGIC,
+    };
+    let mut report = Vec::from(REPORT_MAGIC.as_slice());
+    report.extend_from_slice(&[7_u8; 12]); // illustrative random-nonce bytes
+    report.extend_from_slice(&[11_u8; 48]); // opaque ciphertext and tag
+    assert_eq!(
+        encrypted_report_digest(&report).unwrap(),
+        sha256_b64u(&report)
+    );
+    assert_eq!(
+        encrypted_report_digest(&report[..MIN_REPORT_BYTES - 1])
+            .unwrap_err()
+            .code,
+        "BAD_REPORT_SIZE"
+    );
+    assert_eq!(
+        encrypted_report_digest(&vec![1_u8; MAX_REPORT_BYTES + 1])
+            .unwrap_err()
+            .code,
+        "BAD_REPORT_SIZE"
+    );
+    let mut changed_magic = report.clone();
+    changed_magic[0] ^= 1;
+    assert_eq!(
+        encrypted_report_digest(&changed_magic).unwrap_err().code,
+        "BAD_REPORT_MAGIC"
+    );
+    let mut later_version = report.clone();
+    later_version[5] = 2;
+    assert_eq!(
+        encrypted_report_digest(&later_version).unwrap_err().code,
+        "BAD_REPORT_MAGIC"
+    );
+    // We can commit to uploaded bytes, never claim to have decrypted them.
+    report[30] ^= 1;
+    assert_ne!(
+        encrypted_report_digest(&report).unwrap(),
+        sha256_b64u(&changed_magic)
+    );
+}
+
+#[test]
+fn report_aad_matches_device_bound_reference_and_rejects_cross_site_replay() {
+    use secure_net_core::transfer::{report_associated_data, ReportContext};
+    let actor = "a".repeat(22);
+    let stage = "b".repeat(24);
+    let root = "A".repeat(43);
+    let device = "d".repeat(22);
+    let ctx = ReportContext {
+        actor_id: &actor,
+        stage_id: &stage,
+        destination: "destination.example",
+        ciphertext_root: &root,
+        recipient_device_id: &device,
+    };
+    let aad = report_associated_data(&ctx).unwrap();
+    assert_eq!(
+        String::from_utf8(aad.clone()).unwrap(),
+        format!(
+            "secure-net/transfer.report/v1\n{}",
+            json!([actor, stage, "destination.example", root, device])
+        )
+    );
+    let different_destination = ReportContext {
+        destination: "another.example",
+        ..ctx
+    };
+    assert_ne!(report_associated_data(&different_destination).unwrap(), aad);
+    for bad in ["localhost", "127.0.0.1", "INVALID.EXAMPLE", "site..example"] {
+        assert_eq!(
+            report_associated_data(&ReportContext {
+                destination: bad,
+                ..ctx
+            })
+            .unwrap_err()
+            .code,
+            "BAD_CONTEXT"
+        );
+    }
+}
+
+#[test]
+fn report_aad_and_envelope_digest_match_language_neutral_test_vector() {
+    use secure_net_core::bytes::from_b64u;
+    use secure_net_core::transfer::{
+        encrypted_report_digest, report_associated_data, ReportContext,
+    };
+    let v: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../spec/vectors/transfer-report-v1.json"
+    ))
+    .unwrap();
+    let ctx = &v["context"];
+    let fields = ReportContext {
+        actor_id: ctx["actor_id"].as_str().unwrap(),
+        stage_id: ctx["stage_id"].as_str().unwrap(),
+        destination: ctx["destination"].as_str().unwrap(),
+        ciphertext_root: ctx["ciphertext_root"].as_str().unwrap(),
+        recipient_device_id: ctx["recipient_device_id"].as_str().unwrap(),
+    };
+    assert_eq!(
+        String::from_utf8(report_associated_data(&fields).unwrap()).unwrap(),
+        v["aad_utf8"].as_str().unwrap(),
+    );
+    let synthetic_bytes = from_b64u(v["synthetic_report_b64url"].as_str().unwrap()).unwrap();
+    assert_eq!(
+        encrypted_report_digest(&synthetic_bytes).unwrap(),
+        v["synthetic_report_sha256_b64url"].as_str().unwrap(),
+    );
+}
