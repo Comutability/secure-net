@@ -60,6 +60,7 @@ Signed with the label `secure-net/<kind>/v1` (CVP-002).
 | `transfer.reconcile` | CVP-001 | Provisional SNIP-0007 hybrid-signed client assertion, not proof of decryption or permission for transfer cutover |
 | `transfer.recipient-request` | CVP-001 | Provisional SNIP-0007 hybrid-signed device request with public MLKEM768-P256 key; no private key delivery or KEM possession proof |
 | `transfer.recipient-grant` | CVP-001 | Provisional SNIP-0007 owner signature approving an exact device request; not account binding, decryption, import or cutover |
+| `transfer.recipient-proof` | CVP-001 | Provisional SNIP-0007 device-signed response proving knowledge of a KEM-sealed random challenge; requires durable one-use server state and independent user approval, not a live device enrolment |
 | `vote.ballot` | [CVP-012](CVP-012-governance.md) |  |
 | `vote.result` | [CVP-012](CVP-012-governance.md) |  |
 | `vote.secret-ballot` | [CVP-012](CVP-012-governance.md) |  |
@@ -255,6 +256,7 @@ a change means a new version (CVP-000, 4.4). `<...>` marks a variable part.
 | `secure-net/repo/v1/node` | Merkle node hash prefix (followed by a newline and the two child hashes) | [CVP-020](CVP-020-repositories.md) |  |
 | `secure-net/repo/v1/empty` | root of an empty repository | [CVP-020](CVP-020-repositories.md) |  |
 | `secure-net/transfer.report/v1` | Experimental SNIP-0007 recipient-encrypted reconciliation report associated-data domain; draft only, not advertised | CVP-001 |  |
+| `secure-net/transfer.recipient-possession/v1` | Experimental SNIP-0007 domain separation for a sealed device KEM possession challenge, not authenticated account migration | CVP-001 |  |
 
 ## Protocol identifiers
 

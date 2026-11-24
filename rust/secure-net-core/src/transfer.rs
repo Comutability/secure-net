@@ -901,3 +901,255 @@ pub fn verify_recipient_grant(
     validate_recipient_grant_body(&grant, &request, signed_request, expected)?;
     Ok(grant)
 }
+
+// Experimental recipient KEM-key possession proof, independent of Commonveil.
+// The host MUST persist and atomically consume its verifier state across
+// restarts. This in-memory helper does not itself provide durable anti-replay.
+pub const RECIPIENT_PROOF_KIND: &str = "transfer.recipient-proof";
+pub const RECIPIENT_PROOF_CONTEXT: &str = "secure-net/transfer.recipient-possession/v1";
+const RECIPIENT_PROOF_LIFE_MS: i64 = 2 * 60 * 1000;
+
+/// Private state held by the destination, never transmitted to a device.
+/// It retains only the digest of a high-entropy secret, never KEM seeds.
+pub struct RecipientPossessionState {
+    challenge_id: String,
+    request_id: String,
+    grant_id: String,
+    recipient_id: String,
+    proof_digest: [u8; 32],
+    expires_ms: i64,
+    used: bool,
+}
+
+/// A KEM-sealed challenge sent to the recipient, with a destination-only
+/// verifier. A valid response proves this challenge was opened with the
+/// advertised KEM key, but cannot rule out human/device relaying attacks.
+pub struct RecipientPossessionOffer {
+    pub public: Value,
+    pub verifier: RecipientPossessionState,
+}
+
+fn possession_aad(
+    expected: &ExpectedRecipient<'_>,
+    request_id: &str,
+    grant_id: &str,
+    challenge_id: &str,
+) -> String {
+    format!(
+        "{}\n{}",
+        RECIPIENT_PROOF_CONTEXT,
+        json!([
+            expected.actor_id,
+            expected.stage_id,
+            expected.destination,
+            expected.ciphertext_root,
+            expected.challenge,
+            request_id,
+            grant_id,
+            challenge_id
+        ])
+    )
+}
+
+/// Generate one opaque challenge only after both recipient and independent
+/// actor signatures agree. The sealed plaintext is a random 32-byte value.
+/// Nothing here grants account rights or access to conversation history.
+pub fn create_recipient_possession_offer(
+    signed_request: &Value,
+    signed_grant: &Value,
+    owner_public: &str,
+    expected: &ExpectedRecipient<'_>,
+) -> Result<RecipientPossessionOffer> {
+    let grant = verify_recipient_grant(signed_request, signed_grant, owner_public, expected)?;
+    let request_id = crate::signed::record_id(signed_request)?;
+    let grant_id = crate::signed::record_id(signed_grant)?;
+    let challenge_id = crate::bytes::random_b64u(32);
+    let expires_ms = expected
+        .now_ms
+        .saturating_add(RECIPIENT_PROOF_LIFE_MS)
+        .min(grant["expires_ms"].as_i64().unwrap_or(0))
+        .min(signed_request["body"]["expires_ms"].as_i64().unwrap_or(0));
+    if expires_ms <= expected.now_ms {
+        return fail("EXPIRED", "Recipient consent expired before KEM challenge");
+    }
+    // Never persist the plaintext one-use KEM secret. Zeroise it when sealed.
+    let nonce = zeroize::Zeroizing::new(crate::bytes::random::<32>());
+    let proof_digest = crate::bytes::sha256(&nonce[..]);
+    let aad = possession_aad(expected, &request_id, &grant_id, &challenge_id);
+    let public_key = signed_request["body"]["recipient_kem_pub"]
+        .as_str()
+        .ok_or_else(|| Error::new("BAD_DEVICE", "Missing recipient KEM key"))?;
+    let sealed = crate::cv::kem::kem_seal(public_key, &nonce[..], &aad)?;
+    let public = json!({
+        "v": FORMAT_VERSION, "challenge_id": challenge_id,
+        "request_id": request_id, "grant_id": grant_id,
+        "sealed": sealed, "expires_ms": expires_ms,
+    });
+    Ok(RecipientPossessionOffer {
+        public,
+        verifier: RecipientPossessionState {
+            challenge_id,
+            request_id,
+            grant_id,
+            recipient_id: signed_request["body"]["recipient_id"]
+                .as_str()
+                .unwrap_or("")
+                .to_owned(),
+            proof_digest,
+            expires_ms,
+            used: false,
+        },
+    })
+}
+
+/// The recipient device opens the KEM ciphertext locally and hybrid-signs
+/// only a digest of its secret. No private KEM seed or secret is sent to
+/// the destination. This method does not export or wrap history keys.
+pub fn create_recipient_possession_proof(
+    device: &SigningKey,
+    recipient_kem_private: &str,
+    offer: &Value,
+    signed_request: &Value,
+    signed_grant: &Value,
+    owner_public: &str,
+    expected: &ExpectedRecipient<'_>,
+) -> Result<Value> {
+    verify_recipient_grant(signed_request, signed_grant, owner_public, expected)?;
+    if device.kid != signed_request["body"]["recipient_id"]
+        || device.public_key != signed_request["body"]["recipient_sign_public"]
+    {
+        return fail(
+            "WRONG_DEVICE",
+            "A different device cannot sign the recipient proof",
+        );
+    }
+    let outer = offer
+        .as_object()
+        .ok_or_else(|| Error::new("BAD_CHALLENGE", "Missing offer"))?;
+    const KEYS: [&str; 6] = [
+        "v",
+        "challenge_id",
+        "request_id",
+        "grant_id",
+        "sealed",
+        "expires_ms",
+    ];
+    if outer.len() != KEYS.len()
+        || KEYS.iter().any(|k| !outer.contains_key(*k))
+        || offer["v"] != FORMAT_VERSION
+    {
+        return fail("BAD_CHALLENGE", "Unsupported recipient possession offer");
+    }
+    let id = offer["challenge_id"].as_str().unwrap_or("");
+    let request_id = crate::signed::record_id(signed_request)?;
+    let grant_id = crate::signed::record_id(signed_grant)?;
+    let expires_ms = offer["expires_ms"].as_i64().unwrap_or(0);
+    if !challenge_ok(id)
+        || offer["request_id"] != request_id
+        || offer["grant_id"] != grant_id
+        || expires_ms < expected.now_ms
+        || expires_ms > expected.now_ms.saturating_add(RECIPIENT_PROOF_LIFE_MS)
+        || expires_ms > signed_grant["body"]["expires_ms"].as_i64().unwrap_or(0)
+    {
+        return fail("BAD_CHALLENGE", "Stale or unrelated possession challenge");
+    }
+    let sealed = &offer["sealed"];
+    let sealed_fields = sealed
+        .as_object()
+        .ok_or_else(|| Error::new("BAD_CHALLENGE", "Missing sealed value"))?;
+    if sealed_fields.len() != 3
+        || ["kct", "iv", "ct"]
+            .iter()
+            .any(|k| !sealed_fields.contains_key(*k))
+    {
+        return fail("BAD_CHALLENGE", "Unexpected sealed challenge metadata");
+    }
+    let aad = possession_aad(expected, &request_id, &grant_id, id);
+    let plaintext = crate::cv::kem::kem_open(recipient_kem_private, sealed, &aad)?;
+    if plaintext.len() != 32 {
+        return fail("BAD_CHALLENGE", "Unexpected KEM challenge size");
+    }
+    let body = json!({
+        "v": FORMAT_VERSION,
+        "actor": expected.actor_id,
+        "stage_id": expected.stage_id,
+        "to": expected.destination,
+        "recipient_id": device.kid,
+        "challenge_id": id,
+        "recipient_request_sha256": request_id,
+        "owner_grant_sha256": grant_id,
+        "proof_sha256": sha256_b64u(&plaintext),
+        "issued_ms": expected.now_ms,
+        "expires_ms": expires_ms,
+    });
+    sign(RECIPIENT_PROOF_KIND, &body, device)
+}
+
+/// Verify the hybrid-signed response and consume this verifier exactly once.
+/// The caller MUST durably and atomically persist the consumed state before
+/// acknowledging it. Persisted anti-replay, channel authentication and human
+/// device approval are outside this application-independent primitive.
+pub fn verify_recipient_possession_proof(
+    state: &mut RecipientPossessionState,
+    signed_proof: &Value,
+    signed_request: &Value,
+    signed_grant: &Value,
+    owner_public: &str,
+    expected: &ExpectedRecipient<'_>,
+) -> Result<Value> {
+    if state.used {
+        return fail("REPLAYED", "Possession challenge already consumed");
+    }
+    verify_recipient_grant(signed_request, signed_grant, owner_public, expected)?;
+    if expected.now_ms > state.expires_ms {
+        return fail("EXPIRED", "Possession challenge has expired");
+    }
+    let public = signed_request["body"]["recipient_sign_public"]
+        .as_str()
+        .ok_or_else(|| Error::new("BAD_DEVICE", "Missing recipient device key"))?;
+    let body = strict_recipient_envelope(signed_proof, public, RECIPIENT_PROOF_KIND)?;
+    const KEYS: [&str; 11] = [
+        "v",
+        "actor",
+        "stage_id",
+        "to",
+        "recipient_id",
+        "challenge_id",
+        "recipient_request_sha256",
+        "owner_grant_sha256",
+        "proof_sha256",
+        "issued_ms",
+        "expires_ms",
+    ];
+    exact_fields(&body, &KEYS)?;
+    if body["v"] != FORMAT_VERSION
+        || body["actor"] != expected.actor_id
+        || body["stage_id"] != expected.stage_id
+        || body["to"] != expected.destination
+        || body["recipient_id"] != state.recipient_id
+        || body["challenge_id"] != state.challenge_id
+        || body["recipient_request_sha256"] != state.request_id
+        || body["owner_grant_sha256"] != state.grant_id
+        || body["expires_ms"] != state.expires_ms
+    {
+        return fail(
+            "BAD_PROOF",
+            "Proof is not bound to this recipient authorisation",
+        );
+    }
+    recipient_time(&body, expected.now_ms)?;
+    let response_text = body["proof_sha256"].as_str().unwrap_or("");
+    if !hash_ok(response_text) {
+        return fail("BAD_PROOF", "Malformed KEM possession response digest");
+    }
+    let response = from_b64u(response_text)?;
+    if !crate::bytes::equal_bytes(&response, &state.proof_digest) {
+        return fail("BAD_PROOF", "Wrong recipient KEM possession proof");
+    }
+    state.used = true;
+    Ok(json!({
+        "recipient_possession_verified": true,
+        "recipient_id": state.recipient_id,
+        "imported": false, "cutover": false
+    }))
+}

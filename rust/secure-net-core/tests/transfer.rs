@@ -1001,3 +1001,323 @@ fn independent_recipient_grants_reject_forgery_metadata_downgrade_and_key_leaks(
         "BAD_GRANT"
     );
 }
+
+fn possession_fixture() -> (
+    SigningKey,
+    SigningKey,
+    serde_json::Value,
+    serde_json::Value,
+    serde_json::Value,
+    String,
+    String,
+    String,
+) {
+    use secure_net_core::transfer::{
+        create_recipient_grant, create_recipient_request, ExpectedRecipient, RecipientRequestInput,
+    };
+    let actor = SigningKey::generate(true);
+    let device = SigningKey::generate(true);
+    let kem = secure_net_core::cv::kem::kem_keygen(None).unwrap();
+    let private = kem["kem_priv"].as_str().unwrap().to_string();
+    let root = sha256_b64u(b"test-opaque-archive-root");
+    let nonce = challenge();
+    let expected = ExpectedRecipient {
+        actor_id: &actor.kid,
+        stage_id: "recstage000000000000000001",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW,
+    };
+    let request = create_recipient_request(
+        &device,
+        &RecipientRequestInput {
+            expected,
+            recipient_kem_public: kem["kem_pub"].as_str().unwrap(),
+            expires_ms: NOW + 120_000,
+        },
+    )
+    .unwrap();
+    let grant = create_recipient_grant(&actor, &request, &expected, NOW + 115_000).unwrap();
+    (actor, device, request, grant, kem, private, root, nonce)
+}
+
+#[test]
+fn user_approved_recipient_proves_kem_private_key_without_sharing_any_secret() {
+    use secure_net_core::transfer::{
+        create_recipient_possession_offer, create_recipient_possession_proof,
+        verify_recipient_possession_proof, ExpectedRecipient,
+    };
+    let (actor, device, request, grant, _, private, root, nonce) = possession_fixture();
+    let expected = ExpectedRecipient {
+        actor_id: &actor.kid,
+        stage_id: "recstage000000000000000001",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW,
+    };
+    let mut offer =
+        create_recipient_possession_offer(&request, &grant, &actor.public_key, &expected).unwrap();
+    assert_eq!(offer.public["expires_ms"], NOW + 115_000);
+    let proof = create_recipient_possession_proof(
+        &device,
+        &private,
+        &offer.public,
+        &request,
+        &grant,
+        &actor.public_key,
+        &expected,
+    )
+    .unwrap();
+    assert!(!offer.public.to_string().contains(&private));
+    assert!(!proof.to_string().contains(&private));
+    assert!(!offer.public.to_string().contains("kem_priv"));
+    assert!(!proof.to_string().contains("kem_priv"));
+    let result = verify_recipient_possession_proof(
+        &mut offer.verifier,
+        &proof,
+        &request,
+        &grant,
+        &actor.public_key,
+        &expected,
+    )
+    .unwrap();
+    assert_eq!(result["recipient_possession_verified"], true);
+    assert_eq!(result["imported"], false);
+    assert_eq!(result["cutover"], false);
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut offer.verifier,
+            &proof,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "REPLAYED"
+    );
+}
+
+#[test]
+fn recipient_possession_rejects_wrong_private_key_tampered_offer_and_wrong_device() {
+    use secure_net_core::transfer::{
+        create_recipient_possession_offer, create_recipient_possession_proof, ExpectedRecipient,
+    };
+    let (actor, device, request, grant, _, private, root, nonce) = possession_fixture();
+    let expected = ExpectedRecipient {
+        actor_id: &actor.kid,
+        stage_id: "recstage000000000000000001",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW,
+    };
+    let offer =
+        create_recipient_possession_offer(&request, &grant, &actor.public_key, &expected).unwrap();
+    let wrong_priv = secure_net_core::cv::kem::kem_keygen(None).unwrap();
+    assert_eq!(
+        create_recipient_possession_proof(
+            &device,
+            wrong_priv["kem_priv"].as_str().unwrap(),
+            &offer.public,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "KEM_FAILED"
+    );
+    let impostor = SigningKey::generate(true);
+    assert_eq!(
+        create_recipient_possession_proof(
+            &impostor,
+            &private,
+            &offer.public,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "WRONG_DEVICE"
+    );
+    let mut tampered = offer.public.clone();
+    tampered["challenge_id"] = json!(secure_net_core::bytes::random_b64u(32));
+    assert_eq!(
+        create_recipient_possession_proof(
+            &device,
+            &private,
+            &tampered,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "KEM_FAILED"
+    );
+    let mut unsafe_metadata = offer.public.clone();
+    unsafe_metadata["recipient_secret"] = json!("should not be here");
+    assert_eq!(
+        create_recipient_possession_proof(
+            &device,
+            &private,
+            &unsafe_metadata,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "BAD_CHALLENGE"
+    );
+}
+
+#[test]
+fn recipient_possession_refuses_forged_proof_wrong_site_and_expiry() {
+    use secure_net_core::transfer::{
+        create_recipient_possession_offer, create_recipient_possession_proof,
+        verify_recipient_possession_proof, ExpectedRecipient,
+    };
+    let (actor, device, request, grant, _, private, root, nonce) = possession_fixture();
+    let expected = ExpectedRecipient {
+        actor_id: &actor.kid,
+        stage_id: "recstage000000000000000001",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW,
+    };
+    let mut offer =
+        create_recipient_possession_offer(&request, &grant, &actor.public_key, &expected).unwrap();
+    let proof = create_recipient_possession_proof(
+        &device,
+        &private,
+        &offer.public,
+        &request,
+        &grant,
+        &actor.public_key,
+        &expected,
+    )
+    .unwrap();
+    let mut tampered_proof = proof.clone();
+    tampered_proof["body"]["proof_sha256"] = json!(sha256_b64u(b"fake"));
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut offer.verifier,
+            &tampered_proof,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "BAD_SIGNATURE"
+    );
+    let mut leaky = proof.clone();
+    leaky["plaintext"] = json!("not a public protocol field");
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut offer.verifier,
+            &leaky,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "BAD_CONSENT"
+    );
+    let mut invalid_digest = proof["body"].clone();
+    invalid_digest["proof_sha256"] = json!("wrong-format");
+    let signed_invalid =
+        secure_net_core::signed::sign("transfer.recipient-proof", &invalid_digest, &device)
+            .unwrap();
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut offer.verifier,
+            &signed_invalid,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "BAD_PROOF"
+    );
+    let mut forged_body = proof["body"].clone();
+    forged_body["proof_sha256"] = json!(sha256_b64u(b"wrong secret"));
+    let wrong_but_signed =
+        secure_net_core::signed::sign("transfer.recipient-proof", &forged_body, &device).unwrap();
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut offer.verifier,
+            &wrong_but_signed,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "BAD_PROOF"
+    );
+    let host = ExpectedRecipient {
+        destination: "wrong.example",
+        ..expected
+    };
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut offer.verifier,
+            &proof,
+            &request,
+            &grant,
+            &actor.public_key,
+            &host
+        )
+        .unwrap_err()
+        .code,
+        "BAD_CONSENT"
+    );
+    let expired = ExpectedRecipient {
+        now_ms: NOW + 116_000,
+        ..expected
+    };
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut offer.verifier,
+            &proof,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expired
+        )
+        .unwrap_err()
+        .code,
+        "EXPIRED"
+    );
+    // Rejected attempts must never consume a valid challenge.
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut offer.verifier,
+            &proof,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap()["recipient_possession_verified"],
+        true
+    );
+}
