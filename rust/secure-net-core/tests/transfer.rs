@@ -520,3 +520,223 @@ fn report_aad_and_envelope_digest_match_language_neutral_test_vector() {
         v["synthetic_report_sha256_b64url"].as_str().unwrap(),
     );
 }
+
+fn reconciliation_fixture(owner: &SigningKey) -> (serde_json::Value, String) {
+    use secure_net_core::transfer::{create_reconciliation, ReconcileInput};
+    let blob = b"CVRPT\x01abcdefghijklopaque-encrypted-report-body-and-tag";
+    let digest = sha256_b64u(blob);
+    let statement = create_reconciliation(
+        owner,
+        &ReconcileInput {
+            stage_id: "stage00000000000000000000",
+            destination: DEST,
+            ciphertext_root: &sha256_b64u(b"transfer-manifest"),
+            challenge: &challenge(),
+            encrypted_report_sha256: &digest,
+            issued_ms: NOW,
+            expires_ms: NOW + 120_000,
+        },
+    )
+    .unwrap();
+    (statement, digest)
+}
+
+#[test]
+fn independent_hybrid_actor_can_sign_private_report_attestation_without_a_service_identity() {
+    use secure_net_core::transfer::{verify_reconciliation, ExpectedReconciliation};
+    let owner = SigningKey::generate(true);
+    let (statement, digest) = reconciliation_fixture(&owner);
+    let root = sha256_b64u(b"transfer-manifest");
+    let nonce = challenge();
+    let expected = ExpectedReconciliation {
+        owner_public: &owner.public_key,
+        actor_id: &owner.kid,
+        stage_id: "stage00000000000000000000",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        encrypted_report_sha256: &digest,
+        now_ms: NOW + 1000,
+    };
+    let verified = verify_reconciliation(&statement, &expected).unwrap();
+    assert_eq!(verified["actor"], owner.kid);
+    assert_eq!(verified["encrypted_report_sha256"], digest);
+    assert_eq!(verified["client_checked"], true);
+}
+
+#[test]
+fn signed_reconciliation_refuses_wrong_stage_site_hash_challenge_and_replay() {
+    use secure_net_core::transfer::{verify_reconciliation, ExpectedReconciliation};
+    let owner = SigningKey::generate(true);
+    let (statement, digest) = reconciliation_fixture(&owner);
+    let root = sha256_b64u(b"transfer-manifest");
+    let nonce = challenge();
+    let expected = ExpectedReconciliation {
+        owner_public: &owner.public_key,
+        actor_id: &owner.kid,
+        stage_id: "stage00000000000000000000",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        encrypted_report_sha256: &digest,
+        now_ms: NOW + 1000,
+    };
+    let wrong_stage = ExpectedReconciliation {
+        stage_id: "a".repeat(24).leak(),
+        ..expected
+    };
+    assert_eq!(
+        verify_reconciliation(&statement, &wrong_stage)
+            .unwrap_err()
+            .code,
+        "WRONG_STAGE"
+    );
+    assert_eq!(
+        verify_reconciliation(
+            &statement,
+            &ExpectedReconciliation {
+                destination: "different.example",
+                ..expected
+            }
+        )
+        .unwrap_err()
+        .code,
+        "WRONG_SITE"
+    );
+    let wrong_hash = sha256_b64u(b"different encrypted report");
+    assert_eq!(
+        verify_reconciliation(
+            &statement,
+            &ExpectedReconciliation {
+                encrypted_report_sha256: &wrong_hash,
+                ..expected
+            }
+        )
+        .unwrap_err()
+        .code,
+        "BAD_REPORT_DIGEST"
+    );
+    assert_eq!(
+        verify_reconciliation(
+            &statement,
+            &ExpectedReconciliation {
+                challenge: &sha256_b64u(b"other nonce"),
+                ..expected
+            }
+        )
+        .unwrap_err()
+        .code,
+        "BAD_CHALLENGE"
+    );
+    let wrong_root = sha256_b64u(b"different archive");
+    assert_eq!(
+        verify_reconciliation(
+            &statement,
+            &ExpectedReconciliation {
+                ciphertext_root: &wrong_root,
+                ..expected
+            }
+        )
+        .unwrap_err()
+        .code,
+        "BAD_ROOT"
+    );
+    assert_eq!(
+        verify_reconciliation(
+            &statement,
+            &ExpectedReconciliation {
+                now_ms: NOW + 121_000,
+                ..expected
+            }
+        )
+        .unwrap_err()
+        .code,
+        "EXPIRED"
+    );
+    let impostor = SigningKey::generate(true);
+    assert_eq!(
+        verify_reconciliation(
+            &statement,
+            &ExpectedReconciliation {
+                owner_public: &impostor.public_key,
+                actor_id: &impostor.kid,
+                ..expected
+            }
+        )
+        .unwrap_err()
+        .code,
+        "UNKNOWN_SIGNER"
+    );
+}
+
+#[test]
+fn reconciliation_schema_rejects_unsigned_metadata_and_classical_downgrade() {
+    use secure_net_core::transfer::{
+        create_reconciliation, verify_reconciliation, ExpectedReconciliation, ReconcileInput,
+    };
+    let owner = SigningKey::generate(true);
+    let (statement, digest) = reconciliation_fixture(&owner);
+    let root = sha256_b64u(b"transfer-manifest");
+    let nonce = challenge();
+    let expected = ExpectedReconciliation {
+        owner_public: &owner.public_key,
+        actor_id: &owner.kid,
+        stage_id: "stage00000000000000000000",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        encrypted_report_sha256: &digest,
+        now_ms: NOW,
+    };
+    let mut envelope = statement.clone();
+    envelope["plaintext_message"] = json!("secret text");
+    assert_eq!(
+        verify_reconciliation(&envelope, &expected)
+            .unwrap_err()
+            .code,
+        "BAD_RECONCILIATION"
+    );
+    let mut malicious_signature = statement.clone();
+    malicious_signature["sig"]["name"] = json!("contact name");
+    assert_eq!(
+        verify_reconciliation(&malicious_signature, &expected)
+            .unwrap_err()
+            .code,
+        "BAD_RECONCILIATION"
+    );
+    let mut body = statement["body"].clone();
+    body["filename"] = json!("secret-report.json");
+    let signed_extra = secure_net_core::signed::sign("transfer.reconcile", &body, &owner).unwrap();
+    assert_eq!(
+        verify_reconciliation(&signed_extra, &expected)
+            .unwrap_err()
+            .code,
+        "BAD_RECONCILIATION"
+    );
+    let mut tampered = statement.clone();
+    tampered["body"]["client_checked"] = json!(false);
+    assert_eq!(
+        verify_reconciliation(&tampered, &expected)
+            .unwrap_err()
+            .code,
+        "BAD_SIGNATURE"
+    );
+    let classic = SigningKey::generate(false);
+    assert_eq!(
+        create_reconciliation(
+            &classic,
+            &ReconcileInput {
+                stage_id: "stage00000000000000000000",
+                destination: DEST,
+                ciphertext_root: &root,
+                challenge: &nonce,
+                encrypted_report_sha256: &digest,
+                issued_ms: NOW,
+                expires_ms: NOW + 120_000,
+            }
+        )
+        .unwrap_err()
+        .code,
+        "NOT_PQ"
+    );
+}

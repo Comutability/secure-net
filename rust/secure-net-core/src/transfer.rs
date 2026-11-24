@@ -443,3 +443,181 @@ pub fn report_associated_data(context: &ReportContext<'_>) -> Result<Vec<u8>> {
     out.extend_from_slice(fields.to_string().as_bytes());
     Ok(out)
 }
+
+/// Proposed client statement, not evidence of actual decryption or site migration.
+/// A destination must verify that the reported encrypted digest matches bytes
+/// already stored, and must independently authenticate the recipient device.
+pub const RECONCILE_KIND: &str = "transfer.reconcile";
+pub const MAX_RECONCILE_AGE_MS: i64 = 5 * 60 * 1000;
+
+#[derive(Clone, Copy, Debug)]
+pub struct ReconcileInput<'a> {
+    pub stage_id: &'a str,
+    pub destination: &'a str,
+    pub ciphertext_root: &'a str,
+    pub challenge: &'a str,
+    pub encrypted_report_sha256: &'a str,
+    pub issued_ms: i64,
+    pub expires_ms: i64,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ExpectedReconciliation<'a> {
+    pub owner_public: &'a str,
+    pub actor_id: &'a str,
+    pub stage_id: &'a str,
+    pub destination: &'a str,
+    pub ciphertext_root: &'a str,
+    pub challenge: &'a str,
+    pub encrypted_report_sha256: &'a str,
+    pub now_ms: i64,
+}
+
+fn valid_stage_id(stage: &str) -> bool {
+    (20..=90).contains(&stage.len())
+        && stage
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'_' || b == b'-')
+}
+
+fn validate_reconciliation_body(body: &Value, now_ms: i64) -> Result<()> {
+    let fields = body
+        .as_object()
+        .ok_or_else(|| Error::new("BAD_RECONCILIATION", "Not an object"))?;
+    const KEYS: [&str; 10] = [
+        "v",
+        "actor",
+        "stage_id",
+        "to",
+        "ciphertext_root",
+        "challenge",
+        "encrypted_report_sha256",
+        "client_checked",
+        "issued_ms",
+        "expires_ms",
+    ];
+    if fields.len() != KEYS.len() || KEYS.iter().any(|key| !fields.contains_key(*key)) {
+        return fail(
+            "BAD_RECONCILIATION",
+            "Unexpected fields in client assertion",
+        );
+    }
+    if body["v"] != FORMAT_VERSION
+        || !body["actor"]
+            .as_str()
+            .is_some_and(|a| (16..=90).contains(&a.len()))
+        || !body["stage_id"].as_str().is_some_and(valid_stage_id)
+        || !body["to"].as_str().is_some_and(canonical_host)
+        || !body["ciphertext_root"].as_str().is_some_and(hash_ok)
+        || !body["challenge"].as_str().is_some_and(challenge_ok)
+        || !body["encrypted_report_sha256"]
+            .as_str()
+            .is_some_and(hash_ok)
+        || body["client_checked"] != true
+    {
+        return fail(
+            "BAD_RECONCILIATION",
+            "Missing or malformed reconciliation fields",
+        );
+    }
+    let issued = body["issued_ms"]
+        .as_i64()
+        .ok_or_else(|| Error::new("BAD_TIME", "Missing issue time"))?;
+    let expires = body["expires_ms"]
+        .as_i64()
+        .ok_or_else(|| Error::new("BAD_TIME", "Missing expiry"))?;
+    if issued > now_ms.saturating_add(CLOCK_SKEW_MS)
+        || expires < now_ms
+        || expires <= issued
+        || expires.saturating_sub(issued) > MAX_RECONCILE_AGE_MS
+    {
+        return fail(
+            "EXPIRED",
+            "Client attestation expired or exceeds five minutes",
+        );
+    }
+    Ok(())
+}
+
+/// Produce an independently owned hybrid-signed *claim* that the owner has
+/// checked a staged archive and a separately encrypted private report.
+/// No Commonveil login, contact graph or plaintext is part of this record.
+pub fn create_reconciliation(owner: &SigningKey, input: &ReconcileInput<'_>) -> Result<Value> {
+    if !owner.public_key.contains('.') {
+        return fail("NOT_PQ", "A hybrid actor key is required");
+    }
+    let body = json!({
+        "v": FORMAT_VERSION,
+        "actor": key_id(&owner.public_key)?,
+        "stage_id": input.stage_id,
+        "to": input.destination,
+        "ciphertext_root": input.ciphertext_root,
+        "challenge": input.challenge,
+        "encrypted_report_sha256": input.encrypted_report_sha256,
+        "client_checked": true,
+        "issued_ms": input.issued_ms,
+        "expires_ms": input.expires_ms,
+    });
+    validate_reconciliation_body(&body, input.issued_ms)?;
+    sign(RECONCILE_KIND, &body, owner)
+}
+
+/// Provider-neutral verification of a signed client assertion against the
+/// previously verified stage, destination, challenge, ciphertext commitment
+/// and exact digest of a staged report. A successful signature is NOT proof
+/// of readable history, successful import, ZK credentials or signed cutover.
+pub fn verify_reconciliation(
+    record: &Value,
+    expected: &ExpectedReconciliation<'_>,
+) -> Result<Value> {
+    if !expected.owner_public.contains('.') {
+        return fail("NOT_PQ", "A hybrid actor key is required");
+    }
+    let actual_actor = key_id(expected.owner_public)?;
+    if expected.actor_id != actual_actor {
+        return fail(
+            "WRONG_ACTOR",
+            "Expected actor does not match the pinned owner key",
+        );
+    }
+    let outer = record
+        .as_object()
+        .ok_or_else(|| Error::new("BAD_RECONCILIATION", "Not a signed object"))?;
+    const OUTER: [&str; 3] = ["kind", "body", "sig"];
+    if outer.len() != OUTER.len() || OUTER.iter().any(|key| !outer.contains_key(*key)) {
+        return fail(
+            "BAD_RECONCILIATION",
+            "Unexpected unsigned envelope metadata",
+        );
+    }
+    let signature = record["sig"]
+        .as_object()
+        .ok_or_else(|| Error::new("BAD_RECONCILIATION", "Missing signature"))?;
+    const SIG: [&str; 4] = ["kid", "alg", "value", "pq"];
+    if signature.len() != SIG.len() || SIG.iter().any(|key| !signature.contains_key(*key)) {
+        return fail("BAD_RECONCILIATION", "Unexpected signature metadata");
+    }
+    let body = verify(
+        record,
+        |kid| (kid == actual_actor).then(|| expected.owner_public.to_string()),
+        Some(&[RECONCILE_KIND]),
+    )?;
+    validate_reconciliation_body(body, expected.now_ms)?;
+    for (key, value, code) in [
+        ("actor", expected.actor_id, "WRONG_ACTOR"),
+        ("stage_id", expected.stage_id, "WRONG_STAGE"),
+        ("to", expected.destination, "WRONG_SITE"),
+        ("ciphertext_root", expected.ciphertext_root, "BAD_ROOT"),
+        ("challenge", expected.challenge, "BAD_CHALLENGE"),
+        (
+            "encrypted_report_sha256",
+            expected.encrypted_report_sha256,
+            "BAD_REPORT_DIGEST",
+        ),
+    ] {
+        if body[key] != value {
+            return fail(code, "Reconciliation is not bound to this stage and report");
+        }
+    }
+    Ok(body.clone())
+}

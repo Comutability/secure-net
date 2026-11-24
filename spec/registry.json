@@ -657,6 +657,12 @@
       "note": "Provisional SNIP-0007 authorisation record; no production transfer service or feature advertisement"
     },
     {
+      "name": "transfer.reconcile",
+      "part": "CVP-001",
+      "status": "active",
+      "note": "Provisional SNIP-0007 hybrid-signed client assertion, not proof of decryption or permission for transfer cutover"
+    },
+    {
       "name": "vote.ballot",
       "part": "CVP-012",
       "status": "active"

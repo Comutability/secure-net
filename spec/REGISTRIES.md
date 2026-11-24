@@ -57,6 +57,7 @@ Signed with the label `secure-net/<kind>/v1` (CVP-002).
 | `social.activity` | [CVP-018](CVP-018-activities.md) |  |
 | `theme.package` | CVP-008 |  |
 | `transfer.intent` | CVP-001 | Provisional SNIP-0007 authorisation record; no production transfer service or feature advertisement |
+| `transfer.reconcile` | CVP-001 | Provisional SNIP-0007 hybrid-signed client assertion, not proof of decryption or permission for transfer cutover |
 | `vote.ballot` | [CVP-012](CVP-012-governance.md) |  |
 | `vote.result` | [CVP-012](CVP-012-governance.md) |  |
 | `vote.secret-ballot` | [CVP-012](CVP-012-governance.md) |  |
