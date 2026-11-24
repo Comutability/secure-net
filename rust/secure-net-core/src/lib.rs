@@ -27,6 +27,7 @@ pub mod cv;
 pub mod ed25519;
 pub mod js;
 pub mod portable;
+pub mod transfer;
 pub mod wire;
 pub mod error;
 pub mod extensions;

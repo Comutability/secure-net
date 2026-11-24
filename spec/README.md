@@ -8,7 +8,7 @@ which wins.
 | Part | Subject | Status | Version | Features | Code |
 | --- | --- | --- | --- | --- | --- |
 | [CVP-000](CVP-000-framework.md) | How the standard works: language, versions, compatibility, registries, conformance | Draft | 1 |  | `rust/secure-net-tools/` |
-| CVP-001 | Identifiers, keys, signatures, rotation, recovery, personas, migration | Draft | 1 | `cvp.identity`, `cvp.personas` | `rust/secure-net-core/src/cv/identity.rs`, `rust/secure-net-core/src/cv/recovery.rs`, `rust/secure-net-core/src/portable.rs` |
+| CVP-001 | Identifiers, keys, signatures, rotation, recovery, personas, migration | Draft | 1 | `cvp.identity`, `cvp.personas` | `rust/secure-net-core/src/cv/identity.rs`, `rust/secure-net-core/src/cv/recovery.rs`, `rust/secure-net-core/src/portable.rs`, `rust/secure-net-core/src/transfer.rs` |
 | [CVP-002](CVP-002-signed-records.md) | Canonical encoding and signed records | Draft | 1 |  | `rust/secure-net-core/src/canonical.rs`, `rust/secure-net-core/src/signed.rs` |
 | CVP-003 | Account-wide envelopes and community keys (older; superseded for new messages by CVP-016) | Draft | 1 | `cvp.envelope` | `rust/secure-net-core/src/cv/envelope.rs`, `rust/secure-net-core/src/cv/server_keys.rs`, `rust/secure-net-core/src/cv/kem.rs` |
 | CVP-004 | Spaces, channels, membership and policy | Draft | 1 |  | `rust/secure-net-core/src/commons.rs` |
