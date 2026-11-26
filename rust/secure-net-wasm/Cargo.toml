@@ -1,6 +1,6 @@
 [package]
 name = "secure-net-wasm"
-version = "0.7.0"
+version = "0.8.0"
 description = "Secure Net in Rust, compiled to WebAssembly for browsers, Node.js and Deno."
 edition.workspace = true
 license.workspace = true

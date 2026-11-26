@@ -907,16 +907,34 @@ pub fn verify_recipient_grant(
 // restarts. This in-memory helper does not itself provide durable anti-replay.
 pub const RECIPIENT_PROOF_KIND: &str = "transfer.recipient-proof";
 pub const RECIPIENT_PROOF_CONTEXT: &str = "secure-net/transfer.recipient-possession/v1";
+/// Domain separation for what the destination keeps. The device answers with SHA-256 of the
+/// opened secret; the destination stores only SHA-256 of this label and that answer, so stored
+/// state is never itself a valid answer.
+pub const RECIPIENT_PROOF_VERIFIER_CONTEXT: &str =
+    "secure-net/transfer.recipient-possession/v1/verifier";
 const RECIPIENT_PROOF_LIFE_MS: i64 = 2 * 60 * 1000;
+const RECIPIENT_SNAPSHOT_VERSION: u64 = 2;
+
+/// What the destination stores for a device's answer: never the answer itself.
+fn possession_verifier(answer: &[u8; 32]) -> [u8; 32] {
+    let mut input = zeroize::Zeroizing::new(Vec::with_capacity(
+        RECIPIENT_PROOF_VERIFIER_CONTEXT.len() + 1 + answer.len(),
+    ));
+    input.extend_from_slice(RECIPIENT_PROOF_VERIFIER_CONTEXT.as_bytes());
+    input.push(b'\n');
+    input.extend_from_slice(answer);
+    crate::bytes::sha256(&input)
+}
 
 /// Private state held by the destination, never transmitted to a device.
-/// It retains only the digest of a high-entropy secret, never KEM seeds.
+/// It retains only a one-way digest of the expected answer (never the answer, the
+/// high-entropy secret or any KEM seed), so leaked state can't be replayed as a proof.
 pub struct RecipientPossessionState {
     challenge_id: String,
     request_id: String,
     grant_id: String,
     recipient_id: String,
-    proof_digest: [u8; 32],
+    verifier_digest: [u8; 32],
     expires_ms: i64,
     used: bool,
 }
@@ -927,22 +945,30 @@ pub struct RecipientPossessionState {
 impl RecipientPossessionState {
     pub fn private_snapshot(&self) -> Value {
         json!({
-            "v": 1, "challenge_id": self.challenge_id,
+            "v": RECIPIENT_SNAPSHOT_VERSION, "challenge_id": self.challenge_id,
             "request_id": self.request_id, "grant_id": self.grant_id,
             "recipient_id": self.recipient_id,
-            "proof_digest": crate::bytes::b64u(&self.proof_digest),
+            "verifier_sha256": crate::bytes::b64u(&self.verifier_digest),
             "expires_ms": self.expires_ms, "used": self.used,
         })
     }
 
     pub fn restore_private_snapshot(snapshot: &Value) -> Result<Self> {
+        // Version 1 kept the expected answer itself; those challenges are refused, not
+        // upgraded, and a new challenge must be issued (they last two minutes anyway).
+        if snapshot["v"] == 1 {
+            return fail(
+                "BAD_STATE",
+                "Outdated private challenge state: issue a new challenge",
+            );
+        }
         const KEYS: [&str; 8] = [
             "v",
             "challenge_id",
             "request_id",
             "grant_id",
             "recipient_id",
-            "proof_digest",
+            "verifier_sha256",
             "expires_ms",
             "used",
         ];
@@ -951,12 +977,12 @@ impl RecipientPossessionState {
         let request_id = snapshot["request_id"].as_str().unwrap_or("");
         let grant_id = snapshot["grant_id"].as_str().unwrap_or("");
         let recipient_id = snapshot["recipient_id"].as_str().unwrap_or("");
-        let digest = snapshot["proof_digest"].as_str().unwrap_or("");
+        let digest = snapshot["verifier_sha256"].as_str().unwrap_or("");
         let expires_ms = snapshot["expires_ms"].as_i64().unwrap_or(0);
         let Some(used) = snapshot["used"].as_bool() else {
             return fail("BAD_STATE", "Malformed private challenge state");
         };
-        if snapshot["v"] != 1
+        if snapshot["v"] != RECIPIENT_SNAPSHOT_VERSION
             || !challenge_ok(challenge_id)
             || !hash_ok(request_id)
             || !hash_ok(grant_id)
@@ -968,15 +994,15 @@ impl RecipientPossessionState {
             return fail("BAD_STATE", "Malformed private challenge state");
         }
         let digest = from_b64u(digest)?;
-        let proof_digest: [u8; 32] = digest
+        let verifier_digest: [u8; 32] = digest
             .try_into()
-            .map_err(|_| Error::new("BAD_STATE", "Invalid private proof digest"))?;
+            .map_err(|_| Error::new("BAD_STATE", "Invalid private verifier digest"))?;
         Ok(Self {
             challenge_id: challenge_id.to_owned(),
             request_id: request_id.to_owned(),
             grant_id: grant_id.to_owned(),
             recipient_id: recipient_id.to_owned(),
-            proof_digest,
+            verifier_digest,
             expires_ms,
             used,
         })
@@ -992,7 +1018,8 @@ pub struct RecipientConsumeKey<'a> {
     pub request_id: &'a str,
     pub grant_id: &'a str,
     pub recipient_id: &'a str,
-    pub proof_digest: &'a [u8; 32],
+    /// The stored one-way digest of the expected answer, as kept in the snapshot.
+    pub verifier_digest: &'a [u8; 32],
     pub expires_ms: i64,
 }
 
@@ -1047,9 +1074,11 @@ pub fn create_recipient_possession_offer(
     if expires_ms <= expected.now_ms {
         return fail("EXPIRED", "Recipient consent expired before KEM challenge");
     }
-    // Never persist the plaintext one-use KEM secret. Zeroise it when sealed.
+    // Never persist the plaintext one-use KEM secret. Zeroise it when sealed. Keep only a
+    // digest of the expected answer, so the stored state can't stand in for the answer.
     let nonce = zeroize::Zeroizing::new(crate::bytes::random::<32>());
-    let proof_digest = crate::bytes::sha256(&nonce[..]);
+    let answer = zeroize::Zeroizing::new(crate::bytes::sha256(&nonce[..]));
+    let verifier_digest = possession_verifier(&answer);
     let aad = possession_aad(expected, &request_id, &grant_id, &challenge_id);
     let public_key = signed_request["body"]["recipient_kem_pub"]
         .as_str()
@@ -1070,7 +1099,7 @@ pub fn create_recipient_possession_offer(
                 .as_str()
                 .unwrap_or("")
                 .to_owned(),
-            proof_digest,
+            verifier_digest,
             expires_ms,
             used: false,
         },
@@ -1217,8 +1246,10 @@ fn check_recipient_possession_proof(
     if !hash_ok(response_text) {
         return fail("BAD_PROOF", "Malformed KEM possession response digest");
     }
-    let response = from_b64u(response_text)?;
-    if !crate::bytes::equal_bytes(&response, &state.proof_digest) {
+    let response: [u8; 32] = from_b64u(response_text)?
+        .try_into()
+        .map_err(|_| Error::new("BAD_PROOF", "Malformed KEM possession response digest"))?;
+    if !crate::bytes::equal_bytes(&possession_verifier(&response), &state.verifier_digest) {
         return fail("BAD_PROOF", "Wrong recipient KEM possession proof");
     }
     Ok(json!({
@@ -1282,7 +1313,7 @@ where
         request_id: &state.request_id,
         grant_id: &state.grant_id,
         recipient_id: &state.recipient_id,
-        proof_digest: &state.proof_digest,
+        verifier_digest: &state.verifier_digest,
         expires_ms: state.expires_ms,
     };
     if !consume(&key)? {

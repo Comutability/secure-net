@@ -1,6 +1,6 @@
 {
   "about": "The registries of the Commonveil Protocol (CVP-000, section 7). Normative. Changed only by a SNIP, in the same pull request as the part text and code. rust/secure-net-tools checks the reference code against this file and writes spec/REGISTRIES.md and the index in spec/README.md from it.",
-  "release": "0.7.0",
+  "release": "0.8.0",
   "partStatuses": [
     "Reserved",
     "Draft",
@@ -1249,6 +1249,12 @@
     {
       "label": "secure-net/transfer.recipient-possession/v1",
       "use": "Experimental SNIP-0007 domain separation for a sealed device KEM possession challenge, not authenticated account migration",
+      "part": "CVP-001",
+      "status": "active"
+    },
+    {
+      "label": "secure-net/transfer.recipient-possession/v1/verifier",
+      "use": "Experimental SNIP-0007: what a destination stores for the expected possession answer (SHA-256 of this label, a newline and the answer), so stored state is never itself an answer",
       "part": "CVP-001",
       "status": "active"
     }

@@ -1,6 +1,6 @@
 [package]
 name = "secure-net-tools"
-version = "0.7.0"
+version = "0.8.0"
 description = "Secure Net's maintenance tools: the release manifest and the standards check."
 edition.workspace = true
 license.workspace = true

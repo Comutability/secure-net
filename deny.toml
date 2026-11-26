@@ -1,0 +1,21 @@
+# Known vulnerabilities in the crates this workspace builds: `cargo deny check advisories` runs in CI
+# (.github/workflows/test.yml) against the RustSec database. An ignored advisory says why it doesn't
+# apply here and when to look again; nothing is ignored just to make CI pass.
+
+[advisories]
+# Unmaintained notices fail for crates Secure Net depends on directly. cargo-deny says nothing at all
+# about crates further down (which Secure Net can't replace on its own): look at those now and then
+# with `unmaintained = "all"`.
+unmaintained = "workspace"
+ignore = [
+  # crypto-bigint 0.5 (timing variability) comes in with elliptic-curve 0.13: p256, p384 and k256
+  # 0.13 and ecdsa 0.16, which OpenMLS's RustCrypto provider (P-256 and P-384 signatures) and hpke-rs
+  # (P-256, P-384 and K-256 HPKE) use. None of it handles a secret here:
+  # - Secure Net's groups use one ciphersuite, MLS_256_XWING_AES256GCM_SHA512_MLDSA87 (X-Wing HPKE,
+  #   ML-DSA-87 signatures: no elliptic-curve 0.13). A Welcome for any other suite is refused before
+  #   any HPKE decryption, and so is a key package for any other suite, though OpenMLS may check its
+  #   signature first: a public key, public data, and so nothing secret for timing to give away.
+  # - Secure Net's own P-256 code uses p256 0.14, with crypto-bigint 0.7 (fixed from 0.7.6).
+  # Look again when elliptic-curve 0.13 leaves the tree. The ignore expires so that someone does.
+  { id = "RUSTSEC-2026-0387", expiry = "2027-05-26", reason = "Only via elliptic-curve 0.13 in OpenMLS and hpke-rs, for ciphersuites Secure Net refuses; its one X-Wing/ML-DSA-87 suite has no elliptic-curve 0.13 code, and its own P-256 uses crypto-bigint 0.7" },
+]
