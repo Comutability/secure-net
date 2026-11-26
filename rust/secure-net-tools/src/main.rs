@@ -107,8 +107,9 @@ mod manifest {
 
 mod tag {
     //! Version tags: each version in package.json's history gets an annotated tag `vX.Y.Z` at the
-    //! last commit that carried it (the version as people last had it). Tags already there are
-    //! left alone. Push them with `git push origin --tags`.
+    //! last commit on the main line (first parents only, so never a commit inside a merged branch)
+    //! that carried it: the version as people last had it. Tags already there are left alone. Push
+    //! them with `git push origin --tags`.
     use super::*;
     use std::process::Command;
 
@@ -118,7 +119,9 @@ mod tag {
     }
 
     pub fn run() -> ExitCode {
-        let Some(log) = git(&["log", "--format=%H", "--", "package.json"]) else {
+        // Every main-line commit, not only those that changed package.json: a fix that lands after
+        // a version's bump (and before the next) is part of that version.
+        let Some(log) = git(&["log", "--first-parent", "--format=%H"]) else {
             eprintln!("not a git repository");
             return ExitCode::FAILURE;
         };

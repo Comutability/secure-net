@@ -95,8 +95,9 @@ cargo run -p secure-net-tools -- package     # the npm package (needs the wasm32
 cargo run -p secure-net-tools -- tag         # after a release: tag vX.Y.Z, then git push origin --tags
 ```
 
-Every release is tagged `vX.Y.Z` at the last commit that carried that version, so any change made
-after a release must come with a new version number (a draft or experimental addition included).
+Every release is tagged `vX.Y.Z` at the last commit on `main` that carried that version (merge
+commits included, never a commit inside a merged branch), so any change made after a release must
+come with a new version number (a draft or experimental addition included).
 0.7.0 is the one exception: draft SNIP-0007 code was added to `main` while it still said 0.7.0, so
 `tag` pins v0.7.0 to its real release commit, `e3b1450`, and that code shipped as 0.8.0.
 
