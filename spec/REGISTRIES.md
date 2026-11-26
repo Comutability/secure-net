@@ -3,7 +3,7 @@
 Generated from [`registry.json`](registry.json) by `cargo run -p secure-net-tools -- standards --write`. Don't edit this
 file: change `registry.json` through a SNIP (CVP-000, section 7), then regenerate it.
 
-Release 0.7.0.
+Release 0.8.0.
 
 ## Features
 
@@ -257,6 +257,7 @@ a change means a new version (CVP-000, 4.4). `<...>` marks a variable part.
 | `secure-net/repo/v1/empty` | root of an empty repository | [CVP-020](CVP-020-repositories.md) |  |
 | `secure-net/transfer.report/v1` | Experimental SNIP-0007 recipient-encrypted reconciliation report associated-data domain; draft only, not advertised | CVP-001 |  |
 | `secure-net/transfer.recipient-possession/v1` | Experimental SNIP-0007 domain separation for a sealed device KEM possession challenge, not authenticated account migration | CVP-001 |  |
+| `secure-net/transfer.recipient-possession/v1/verifier` | Experimental SNIP-0007: what a destination stores for the expected possession answer (SHA-256 of this label, a newline and the answer), so stored state is never itself an answer | CVP-001 |  |
 
 ## Protocol identifiers
 

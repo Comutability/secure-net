@@ -95,7 +95,13 @@ cargo run -p secure-net-tools -- package     # the npm package (needs the wasm32
 cargo run -p secure-net-tools -- tag         # after a release: tag vX.Y.Z, then git push origin --tags
 ```
 
-Every release is tagged `vX.Y.Z` at the last commit that carried that version.
+Every release is tagged `vX.Y.Z` at the last commit that carried that version, so any change made
+after a release must come with a new version number (a draft or experimental addition included).
+0.7.0 is the one exception: draft SNIP-0007 code was added to `main` while it still said 0.7.0, so
+`tag` pins v0.7.0 to its real release commit, `e3b1450`, and that code shipped as 0.8.0.
+
+0.8.0 adds the experimental, unreviewed SNIP-0007 account-transfer primitives (`transfer`) and
+draft SNIP-0008. Neither SNIP is approved; see each proposal's status.
 
 Commonveil keeps a copy and checks it against `secure-net.manifest.json`, so the two can't drift
 apart unnoticed.

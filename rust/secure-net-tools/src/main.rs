@@ -132,6 +132,14 @@ mod tag {
                 last.push((v, commit.to_string()));
             }
         }
+        // A version whose last commit isn't its release: 0.7.0 kept its number while draft
+        // SNIP-0007 code was added on top of it (that code shipped as 0.8.0).
+        const RELEASED_AT: &[(&str, &str)] = &[("0.7.0", "e3b1450d02a7ccfcf0a20f906afbcbdd7109f54a")];
+        for (v, commit) in last.iter_mut() {
+            if let Some((_, at)) = RELEASED_AT.iter().find(|(x, _)| x == v) {
+                *commit = (*at).to_string();
+            }
+        }
         let mut made = 0;
         for (v, commit) in last.iter().rev() {
             let tag = format!("v{v}");

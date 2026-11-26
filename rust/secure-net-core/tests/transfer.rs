@@ -1339,7 +1339,8 @@ fn recipient_possession_private_snapshot_survives_restart_but_refuses_corruption
     let offer =
         create_recipient_possession_offer(&request, &grant, &actor.public_key, &expected).unwrap();
     let snapshot = offer.verifier.private_snapshot();
-    assert_eq!(snapshot["v"], 1);
+    assert_eq!(snapshot["v"], 2);
+    assert!(snapshot.get("proof_digest").is_none());
     assert_eq!(snapshot["used"], false);
     assert_eq!(snapshot["challenge_id"], offer.public["challenge_id"]);
     assert_eq!(snapshot["request_id"], offer.public["request_id"]);
@@ -1353,10 +1354,10 @@ fn recipient_possession_private_snapshot_survives_restart_but_refuses_corruption
     for (key, value) in [
         ("challenge_id", json!("short")),
         ("request_id", json!("not-a-hash")),
-        ("proof_digest", json!("bad")),
+        ("verifier_sha256", json!("bad")),
         ("expires_ms", json!(-1)),
         ("used", json!("false")),
-        ("v", json!(2)),
+        ("v", json!(3)),
     ] {
         let mut corrupt = snapshot.clone();
         corrupt[key] = value;
@@ -1442,7 +1443,7 @@ fn recipient_possession_uses_durable_atomic_commit_before_ack_and_rejects_replay
         assert_eq!(key.recipient_id, device.kid);
         assert_eq!(key.request_id, offer.public["request_id"]);
         assert_eq!(key.grant_id, offer.public["grant_id"]);
-        assert_eq!(key.proof_digest.len(), 32);
+        assert_eq!(key.verifier_digest.len(), 32);
         match std::fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -1498,4 +1499,89 @@ fn recipient_possession_uses_durable_atomic_commit_before_ack_and_rejects_replay
         RecipientPossessionState::restore_private_snapshot(&verifier.private_snapshot()).unwrap();
     assert_eq!(restored_committed.private_snapshot()["used"], true);
     std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn recipient_possession_state_is_never_itself_a_valid_answer() {
+    use secure_net_core::transfer::{
+        create_recipient_possession_offer, create_recipient_possession_proof,
+        verify_recipient_possession_proof, ExpectedRecipient, RecipientPossessionState,
+    };
+    let (actor, device, request, grant, _, private, root, nonce) = possession_fixture();
+    let expected = ExpectedRecipient {
+        actor_id: &actor.kid,
+        stage_id: "recstage000000000000000001",
+        destination: DEST,
+        ciphertext_root: &root,
+        challenge: &nonce,
+        now_ms: NOW,
+    };
+    let offer =
+        create_recipient_possession_offer(&request, &grant, &actor.public_key, &expected).unwrap();
+    let snapshot = offer.verifier.private_snapshot();
+    let proof = create_recipient_possession_proof(
+        &device,
+        &private,
+        &offer.public,
+        &request,
+        &grant,
+        &actor.public_key,
+        &expected,
+    )
+    .unwrap();
+    // The device's answer and what the destination keeps differ.
+    let answer = proof["body"]["proof_sha256"].as_str().unwrap().to_string();
+    assert_ne!(snapshot["verifier_sha256"].as_str().unwrap(), answer);
+
+    // Someone who read the stored state and holds the device key, but never opened the
+    // KEM ciphertext, signs the stored value as their "answer": it's refused.
+    let mut forged_body = proof["body"].clone();
+    forged_body["proof_sha256"] = snapshot["verifier_sha256"].clone();
+    let forged = secure_net_core::signed::sign(
+        secure_net_core::transfer::RECIPIENT_PROOF_KIND,
+        &forged_body,
+        &device,
+    )
+    .unwrap();
+    let mut state = RecipientPossessionState::restore_private_snapshot(&snapshot).unwrap();
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut state,
+            &forged,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap_err()
+        .code,
+        "BAD_PROOF"
+    );
+    // The genuine answer still verifies, once.
+    let mut state = RecipientPossessionState::restore_private_snapshot(&snapshot).unwrap();
+    assert_eq!(
+        verify_recipient_possession_proof(
+            &mut state,
+            &proof,
+            &request,
+            &grant,
+            &actor.public_key,
+            &expected
+        )
+        .unwrap()["recipient_possession_verified"],
+        true
+    );
+
+    // State kept by the first draft (the answer itself) is refused, not upgraded.
+    let mut old = snapshot.clone();
+    old["v"] = json!(1);
+    old["proof_digest"] = json!(answer);
+    old.as_object_mut().unwrap().remove("verifier_sha256");
+    assert_eq!(
+        RecipientPossessionState::restore_private_snapshot(&old)
+            .err()
+            .unwrap()
+            .code,
+        "BAD_STATE"
+    );
 }

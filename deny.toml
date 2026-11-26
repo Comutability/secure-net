@@ -1,0 +1,16 @@
+# Known vulnerabilities in the crates this workspace builds: `cargo deny check advisories` runs in CI
+# (.github/workflows/test.yml) against the RustSec database. An ignored advisory says why it doesn't
+# apply here and when to look again; nothing is ignored just to make CI pass.
+
+[advisories]
+# Unmaintained notices fail for crates Secure Net depends on directly, and are reported (not failed)
+# for crates further down, which it can't replace on its own.
+unmaintained = "workspace"
+ignore = [
+  # crypto-bigint 0.5 (timing variability): it reaches the build only through OpenMLS's P-256 HPKE
+  # support (p256 0.13). Secure Net's groups use one ciphersuite,
+  # MLS_256_XWING_AES256GCM_SHA512_MLDSA87, which never touches P-256 (joins and additions with any
+  # other suite are refused), and Secure Net's own P-256 code uses p256 0.14 and crypto-bigint 0.7.
+  # Look again when OpenMLS and hpke-rs move to p256 0.14.
+  { id = "RUSTSEC-2026-0387", reason = "Only via OpenMLS P-256 HPKE, which Secure Net's single X-Wing/ML-DSA-87 ciphersuite never uses; Secure Net's own P-256 uses crypto-bigint 0.7" },
+]
