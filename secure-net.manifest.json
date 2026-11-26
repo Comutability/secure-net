@@ -3,7 +3,7 @@
   "version": "0.8.0",
   "files": {
     "package.json": "l9c-GwB6EsGjUIila0KSSHUYjOKdXj74Gkw5lJR89qw",
-    "README.md": "zdOsu7yaQ67B_lwX4FuoYqh2EMyMLl3ctRBEc-s-ijA",
+    "README.md": "dBa6Yg9c1HR6K3V6pW8NNadRYXKMfVjbzVWBb4tzwWc",
     "LICENSE": "2KbMMavBa2dIx6IfIWEfWh7DP2fSLKI9faHBm5VJa-4",
     "GOVERNANCE.md": "Bz6Gqdik0Upu4n_nCIclhmQIHWFE8whkM6m2L-j4neI",
     "snips/SNIP-0001.md": "5y27d7uFle76iHY5uwPqbZaLC8BYm5Tvfv37qqGHf-w",
@@ -104,7 +104,7 @@
     "rust/secure-net-core/src/social/site.rs": "h0EVM7PeQZMrgaC2GjfeissibkLSp9o4IgP_SYme3f4",
     "rust/secure-net-core/src/social/vocabulary.rs": "wajQ83NRRPxnbNheIpDLhKb9OSelrigTn-D_ozMzkI0",
     "rust/secure-net-core/src/tokens/mod.rs": "bsW1-aZ3GvyN9Ll6wZhatuzZvI_0-d_TE7QbN6VSVM8",
-    "rust/secure-net-core/src/transfer.rs": "G8ERMHh6OHUsZIBt-PGs-kVKsRbwbWmMJ-brNq_Gu7U",
+    "rust/secure-net-core/src/transfer.rs": "g8Xvqzc3TuKqXjh1MBTeQLjJSN5P6UY4fh3S7YYkeWI",
     "rust/secure-net-core/src/wire/features.rs": "bG3Jzy2iPnjVOfkwjARL5ZwW19ZS0qvsgeLdqUzWEw0",
     "rust/secure-net-core/src/wire/federation.rs": "frBZ2NQF1KbzOdSYcoznU3Uk3PX1MFbsI2pzfYAjYrg",
     "rust/secure-net-core/src/wire/mod.rs": "YpPBj_uDnFSS2Ho9oKLXksd3CK0YHH775Jp3s3L2yLo",

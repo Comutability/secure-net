@@ -917,7 +917,9 @@ const RECIPIENT_SNAPSHOT_VERSION: u64 = 2;
 
 /// What the destination stores for a device's answer: never the answer itself.
 fn possession_verifier(answer: &[u8; 32]) -> [u8; 32] {
-    let mut input = Vec::with_capacity(RECIPIENT_PROOF_VERIFIER_CONTEXT.len() + 1 + answer.len());
+    let mut input = zeroize::Zeroizing::new(Vec::with_capacity(
+        RECIPIENT_PROOF_VERIFIER_CONTEXT.len() + 1 + answer.len(),
+    ));
     input.extend_from_slice(RECIPIENT_PROOF_VERIFIER_CONTEXT.as_bytes());
     input.push(b'\n');
     input.extend_from_slice(answer);
@@ -1075,7 +1077,8 @@ pub fn create_recipient_possession_offer(
     // Never persist the plaintext one-use KEM secret. Zeroise it when sealed. Keep only a
     // digest of the expected answer, so the stored state can't stand in for the answer.
     let nonce = zeroize::Zeroizing::new(crate::bytes::random::<32>());
-    let verifier_digest = possession_verifier(&crate::bytes::sha256(&nonce[..]));
+    let answer = zeroize::Zeroizing::new(crate::bytes::sha256(&nonce[..]));
+    let verifier_digest = possession_verifier(&answer);
     let aad = possession_aad(expected, &request_id, &grant_id, &challenge_id);
     let public_key = signed_request["body"]["recipient_kem_pub"]
         .as_str()

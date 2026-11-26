@@ -107,9 +107,10 @@ mod manifest {
 
 mod tag {
     //! Version tags: each version in package.json's history gets an annotated tag `vX.Y.Z` at the
-    //! last commit on the main line (first parents only, so never a commit inside a merged branch)
-    //! that carried it: the version as people last had it. Tags already there are left alone. Push
-    //! them with `git push origin --tags`.
+    //! last commit on `main` (first parents only, so never a commit inside a merged branch) that
+    //! carried it: the version as people last had it. It reads `main`, whichever branch is checked
+    //! out, so pull `main` first. Tags already there are left alone (one that points somewhere
+    //! else is reported). Push them with `git push origin --tags`.
     use super::*;
     use std::process::Command;
 
@@ -119,10 +120,11 @@ mod tag {
     }
 
     pub fn run() -> ExitCode {
-        // Every main-line commit, not only those that changed package.json: a fix that lands after
-        // a version's bump (and before the next) is part of that version.
-        let Some(log) = git(&["log", "--first-parent", "--format=%H"]) else {
-            eprintln!("not a git repository");
+        // Every commit on main, not only those that changed package.json: a fix that lands after a
+        // version's bump (and before the next) is part of that version. Never a branch's commits,
+        // which may never reach main.
+        let Some(log) = git(&["log", "--first-parent", "--format=%H", "main", "--"]) else {
+            eprintln!("no main branch here: run this in a clone with main checked out or fetched");
             return ExitCode::FAILURE;
         };
         let existing: BTreeSet<String> = git(&["tag", "--list", "v*"]).unwrap_or_default().lines().map(String::from).collect();
@@ -135,9 +137,13 @@ mod tag {
                 last.push((v, commit.to_string()));
             }
         }
-        // A version whose last commit isn't its release: 0.7.0 kept its number while draft
-        // SNIP-0007 code was added on top of it (that code shipped as 0.8.0).
-        const RELEASED_AT: &[(&str, &str)] = &[("0.7.0", "e3b1450d02a7ccfcf0a20f906afbcbdd7109f54a")];
+        // Versions whose last commit isn't their release, because they kept their number while
+        // later work was added on top: the Rust port on 0.6.0 (it shipped as 0.7.0), and draft
+        // SNIP-0007 code on 0.7.0 (it shipped as 0.8.0).
+        const RELEASED_AT: &[(&str, &str)] = &[
+            ("0.6.0", "2cef8e8a5955c2b9a48f9e26e97746057ca43d07"),
+            ("0.7.0", "e3b1450d02a7ccfcf0a20f906afbcbdd7109f54a"),
+        ];
         for (v, commit) in last.iter_mut() {
             if let Some((_, at)) = RELEASED_AT.iter().find(|(x, _)| x == v) {
                 *commit = (*at).to_string();
@@ -147,6 +153,10 @@ mod tag {
         for (v, commit) in last.iter().rev() {
             let tag = format!("v{v}");
             if existing.contains(&tag) {
+                let at = git(&["rev-list", "-n", "1", &tag]).unwrap_or_default();
+                if at != *commit {
+                    eprintln!("{tag} is at {}, not {}: if it hasn't been pushed, `git tag -d {tag}` and run this again", &at[..at.len().min(7)], &commit[..7]);
+                }
                 continue;
             }
             if git(&["tag", "-a", &tag, commit, "-m", &format!("Secure Net {v}")]).is_none() {
